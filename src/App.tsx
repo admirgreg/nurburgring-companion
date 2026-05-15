@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity } from "lucide-react";
+import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound } from "lucide-react";
 
 const STORAGE_KEY = "nurburgring-2026-companion-v6-race-watch";
 const RACE_START_BRT = "2026-05-16T10:00:00-03:00";
@@ -8,7 +8,8 @@ const RACE_END_BRT = "2026-05-17T10:00:00-03:00";
 type QRow = { pos?: number; num: string; team: string; car: string; time: string; cls: string; change?: number; pitStops?: string; pitState?: string; lastLap?: string };
 type GridCar = { num: string; cls: string; team: string; car: string; why: string; group: string; photo: string };
 type Phase = { phase: string; leader: string; surprise: string; note: string };
-type DriverCard = { name: string; nationality: string; carNum: string; team: string; car: string; role: string; won24h: string; history: string; watch: string };
+type DriverCard = { name: string; nationality: string; carNum: string; team: string; car: string; role: string; won24h: string; history: string; watch: string; avatar?: string };
+type DriverTeamGroup = { key: string; car: GridCar; drivers: DriverCard[] };
 type RaceEvent = { id: number; time: string; title: string; note: string; tag: string };
 type RaceControlMessage = {
   time: string;
@@ -306,8 +307,6 @@ const raceEventsSeed: RaceEvent[] = [
   { id: 1, time: "Pré-corrida", title: "Acompanhar favoritos", note: "#80, #3, #911, #1, #99, #64/#67 e #300 estão no radar.", tag: "Plano" },
   { id: 2, time: "Largada", title: "Olhar tráfego e incidentes", note: "Primeiras voltas no Ring costumam definir quem vai sobreviver limpo.", tag: "Atenção" }
 ];
-
-const statusOptions = ["Normal", "No pit", "Em recuperação", "Problema", "Abandonou", "Atacando", "Defendendo"];
 
 const pilotsSeed: DriverCard[] = [
   { name: "Max Verstappen", nationality: "HOL", carNum: "#3", team: "Mercedes-AMG Team Verstappen Racing", car: "Mercedes-AMG GT3", role: "atração global", won24h: "Ainda não venceu as 24h de Nürburgring", history: "Nome mais chamativo do grid. Mesmo sem histórico longo na prova, chama atenção pelo nível absurdo de adaptação e pela expectativa em volta do projeto Verstappen Racing.", watch: "Ver como ele lida com tráfego, noite e ritmo constante na Nordschleife." },
@@ -729,8 +728,17 @@ function LiveTimingRow({ row, index, leaderTime, raceGroup, isFavorite }: { row:
 }
 function PhotoBox({ src, label }: { src: string; label: string }) {
   const [failed, setFailed] = useState(false);
-  if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className="h-28 w-full rounded-2xl object-contain bg-zinc-50" />;
-  return <div className="flex h-28 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400"><div className="text-center"><ImageIcon className="mx-auto mb-1" size={26} /><div className="text-xs font-bold">Sem foto</div></div></div>;
+  if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className="h-40 w-full rounded-2xl object-contain bg-zinc-50 p-2" />;
+  return <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400"><div className="text-center"><ImageIcon className="mx-auto mb-1" size={26} /><div className="text-xs font-bold">Sem foto</div></div></div>;
+}
+
+function DriverAvatar({ driver }: { driver: DriverCard }) {
+  const [failed, setFailed] = useState(false);
+  if (driver.avatar && !failed) {
+    return <img src={driver.avatar} alt={driver.name} onError={() => setFailed(true)} className="h-12 w-12 rounded-2xl object-cover ring-1 ring-zinc-200" />;
+  }
+  const initials = driver.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
+  return <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-sm font-black text-zinc-500 ring-1 ring-zinc-200"><UserRound size={18} className="mr-0.5" />{initials}</div>;
 }
 
 export default function NurburgringCompanion() {
@@ -772,8 +780,13 @@ export default function NurburgringCompanion() {
   const [carSearch, setCarSearch] = useState("");
   const [carClassFilter, setCarClassFilter] = useState("Todos");
   const [carGroupFilter, setCarGroupFilter] = useState("Todos");
+  const [carsPage, setCarsPage] = useState(1);
+  const [expandedCar, setExpandedCar] = useState<string | null>(null);
+  const carsPerPage = 6;
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState("Todos");
+  const [driversPage, setDriversPage] = useState(1);
+  const driverGroupsPerPage = 6;
 
   useEffect(() => {
     try {
@@ -1030,6 +1043,16 @@ export default function NurburgringCompanion() {
       return okClass && okGroup && (!q || hay.includes(q));
     });
   }, [allCars, carSearch, carClassFilter, carGroupFilter]);
+  useEffect(() => {
+    setCarsPage(1);
+  }, [carSearch, carClassFilter, carGroupFilter]);
+  const totalCarPages = Math.max(1, Math.ceil(filteredCars.length / carsPerPage));
+  const paginatedCars = useMemo(() => {
+    const start = (carsPage - 1) * carsPerPage;
+    return filteredCars.slice(start, start + carsPerPage);
+  }, [filteredCars, carsPage]);
+  const carPageStart = filteredCars.length ? (carsPage - 1) * carsPerPage + 1 : 0;
+  const carPageEnd = Math.min(carsPage * carsPerPage, filteredCars.length);
   const checkedCount = allCars.filter((c) => checked[c.num]).length;
   const favoriteCars = useMemo(() => allCars.filter((c) => favorites[c.num]), [allCars, favorites]);
   const liveByNum = useMemo(() => {
@@ -1132,15 +1155,40 @@ export default function NurburgringCompanion() {
     const entries = Object.entries(carStatus).filter(([, v]) => v && v !== "Normal");
     return entries.map(([num, status]) => ({ num, status, car: allCars.find((c) => c.num === num) })).filter((x) => x.car);
   }, [carStatus, allCars]);
-  const driverTeams = useMemo(() => ["Todos", ...Array.from(new Set(pilotsSeed.map((p) => p.team))).sort()], []);
-  const filteredDrivers = useMemo(() => {
+  const driversByCarNum = useMemo(() => {
+    const map: Record<string, DriverCard[]> = {};
+    pilotsSeed.forEach((driver) => {
+      const nums = String(driver.carNum).split("/").map((part) => part.trim()).filter(Boolean);
+      nums.forEach((num) => {
+        const normalized = num.startsWith("#") ? num : `#${num}`;
+        map[normalized] = [...(map[normalized] || []), driver];
+      });
+    });
+    return map;
+  }, []);
+  const driverTeamGroups = useMemo<DriverTeamGroup[]>(() => {
+    return allCars.map((car) => ({ key: `${car.num}-${car.team}`, car, drivers: driversByCarNum[car.num] || [] }));
+  }, [allCars, driversByCarNum]);
+  const driverTeams = useMemo(() => ["Todos", ...Array.from(new Set(driverTeamGroups.map((group) => group.car.team))).sort()], [driverTeamGroups]);
+  const filteredDriverGroups = useMemo(() => {
     const q = driverSearch.trim().toLowerCase();
-    return pilotsSeed.filter((p) => {
-      const okTeam = driverFilter === "Todos" || p.team === driverFilter;
-      const hay = `${p.name} ${p.nationality} ${p.carNum} ${p.team} ${p.car} ${p.role} ${p.won24h} ${p.history} ${p.watch}`.toLowerCase();
+    return driverTeamGroups.filter((group) => {
+      const okTeam = driverFilter === "Todos" || group.car.team === driverFilter;
+      const knownDrivers = group.drivers.length ? group.drivers.map((p) => `${p.name} ${p.nationality} ${p.role} ${p.won24h} ${p.history} ${p.watch}`).join(" ") : "pilotos não cadastrados equipe completa";
+      const hay = `${group.car.num} ${group.car.cls} ${group.car.team} ${group.car.car} ${knownDrivers}`.toLowerCase();
       return okTeam && (!q || hay.includes(q));
     });
+  }, [driverSearch, driverFilter, driverTeamGroups]);
+  useEffect(() => {
+    setDriversPage(1);
   }, [driverSearch, driverFilter]);
+  const totalDriverPages = Math.max(1, Math.ceil(filteredDriverGroups.length / driverGroupsPerPage));
+  const paginatedDriverGroups = useMemo(() => {
+    const start = (driversPage - 1) * driverGroupsPerPage;
+    return filteredDriverGroups.slice(start, start + driverGroupsPerPage);
+  }, [filteredDriverGroups, driversPage]);
+  const driverPageStart = filteredDriverGroups.length ? (driversPage - 1) * driverGroupsPerPage + 1 : 0;
+  const driverPageEnd = Math.min(driversPage * driverGroupsPerPage, filteredDriverGroups.length);
 
   const resetAll = () => {
     setQRows(q1Seed);
@@ -1638,30 +1686,44 @@ export default function NurburgringCompanion() {
       <section className="space-y-5">
         <CardBox className="p-5">
           <div className="grid gap-4 lg:grid-cols-[1fr_180px_180px]">
-            <div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={carSearch} onChange={(e) => setCarSearch(e.target.value)} placeholder="Buscar por n?mero, equipe, carro, classe..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div>
+            <div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={carSearch} onChange={(e) => setCarSearch(e.target.value)} placeholder="Buscar por número, equipe, carro, classe..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div>
             <select value={carClassFilter} onChange={(e) => setCarClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{classOptions.map((c) => <option key={c}>{c}</option>)}</select>
             <select value={carGroupFilter} onChange={(e) => setCarGroupFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{groupOptions.map((g) => <option key={g}>{g}</option>)}</select>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros vis?veis</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">161 cards</Badge><Badge tone={raceStats.attention ? "red" : "green"}>{raceStats.attention} alertas RC</Badge></div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros filtrados</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">6 por página</Badge><Badge tone={raceStats.attention ? "red" : "green"}>{raceStats.attention} alertas RC</Badge></div>
+        </CardBox>
+
+        <CardBox className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-zinc-600">Mostrando <span className="font-black text-zinc-950">{carPageStart}</span> a <span className="font-black text-zinc-950">{carPageEnd}</span> de <span className="font-black text-zinc-950">{filteredCars.length}</span> carros</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => setCarsPage((p) => Math.max(1, p - 1))} disabled={carsPage <= 1} className={(carsPage <= 1 ? "bg-zinc-100 text-zinc-400" : "bg-zinc-900 text-white hover:bg-zinc-800") + " rounded-2xl px-4 py-2 text-sm font-black"}>← Anterior</button>
+              <div className="rounded-2xl bg-zinc-100 px-4 py-2 text-sm font-black text-zinc-700">Página {carsPage} de {totalCarPages}</div>
+              <button onClick={() => setCarsPage((p) => Math.min(totalCarPages, p + 1))} disabled={carsPage >= totalCarPages} className={(carsPage >= totalCarPages ? "bg-zinc-100 text-zinc-400" : "bg-red-700 text-white hover:bg-red-800") + " rounded-2xl px-4 py-2 text-sm font-black"}>Próxima →</button>
+            </div>
+          </div>
         </CardBox>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredCars.map((c) => {
+          {paginatedCars.map((c) => {
             const live = liveByNum[c.num];
             const group = raceGroupByNum[c.num];
+            const drivers = driversByCarNum[c.num] || [];
+            const isExpanded = expandedCar === c.num;
             const borderClass = group ? (group.tone === "red" ? "border-red-300" : group.tone === "amber" ? "border-amber-300" : "border-blue-300") : "";
 
             return (
               <CardBox key={c.num + "-" + c.team} className={"overflow-hidden transition " + borderClass}>
                 <div className="p-4"><div className="relative"><PhotoBox src={c.photo} label={c.num + " " + c.car} /><button onClick={() => toggleFavorite(c.num)} className={(favorites[c.num] ? "bg-amber-400 text-zinc-950" : "bg-white/90 text-zinc-500") + " absolute right-2 top-2 rounded-full p-2 shadow"} title="Favoritar"><Star size={18} fill={favorites[c.num] ? "currentColor" : "none"} /></button></div></div>
-                <div className="flex items-center justify-between border-y border-zinc-100 bg-zinc-50 p-4"><div className="text-3xl font-black">{c.num}</div><div className="flex flex-wrap justify-end gap-2"><Badge tone={c.group === "Favorito" ? "red" : c.group === "Surpresa" ? "amber" : c.group === "Personagem" ? "green" : "gray"}>{c.group}</Badge><Badge>{c.cls || "?"}</Badge>{group && <Badge tone={group.tone}>RC</Badge>}</div></div>
+                <div className="flex items-center justify-between border-y border-zinc-100 bg-zinc-50 p-4"><div className="text-3xl font-black">{c.num}</div><div className="flex flex-wrap justify-end gap-2"><Badge tone={c.group === "Favorito" ? "red" : c.group === "Surpresa" ? "amber" : c.group === "Personagem" ? "green" : "gray"}>{c.group}</Badge><Badge>{c.cls || "—"}</Badge>{group && <Badge tone={group.tone}>RC</Badge>}</div></div>
                 <div className="p-4">
                   <div className="font-black">{c.team}</div>
                   <div className="mt-1 text-sm text-zinc-600">{c.car}</div>
                   <p className="mt-3 text-sm leading-6">{c.why}</p>
-                  <div className={(live ? "bg-emerald-50 text-emerald-950" : "bg-zinc-50 text-zinc-500") + " mt-4 rounded-2xl p-3 text-sm"}><div className="text-[10px] font-black uppercase tracking-wider">Live timing</div>{live ? <div className="mt-1 flex flex-wrap items-center gap-2"><Badge tone="green">P{live.pos || "?"}</Badge><span className="font-black">{live.time || "sem tempo"}</span><span className="text-xs">{live.cls || c.cls}</span></div> : <div className="mt-1 font-bold">Sem dados nesta sess?o</div>}</div>
+                  <div className={(live ? "bg-emerald-50 text-emerald-950" : "bg-zinc-50 text-zinc-500") + " mt-4 rounded-2xl p-3 text-sm"}><div className="text-[10px] font-black uppercase tracking-wider">Live timing</div>{live ? <div className="mt-1 flex flex-wrap items-center gap-2"><Badge tone="green">P{live.pos || "—"}</Badge><span className="font-black">{live.time || "sem tempo"}</span><span className="text-xs">{live.cls || c.cls}</span></div> : <div className="mt-1 font-bold">Sem dados nesta sessão</div>}</div>
                   {group && <div className={(group.tone === "red" ? "bg-red-50 text-red-950" : group.tone === "amber" ? "bg-amber-50 text-amber-950" : "bg-blue-50 text-blue-950") + " mt-3 rounded-2xl p-3 text-sm"}><div className="flex flex-wrap items-center gap-2"><Badge tone={group.tone}>{formatRaceMessageType(group.latest.type)}</Badge><span className="text-xs font-black">{group.messages.length} msg</span></div><div className="mt-2 font-bold leading-5">{truncateText(group.latest.translatedMessage, 150)}</div><button onClick={() => setActive("racecontrol")} className="mt-2 text-xs font-black text-red-700">Ver Race Control</button></div>}
-                  <select value={carStatus[c.num] || "Normal"} onChange={(e) => setCarStatus((old) => ({ ...old, [c.num]: e.target.value }))} className="mt-4 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold">{statusOptions.map((s) => <option key={s}>{s}</option>)}</select>
+                  <button onClick={() => setExpandedCar((current) => current === c.num ? null : c.num)} className="mt-4 flex w-full items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-50"><span>Pilotos / equipe</span>{isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
+                  {isExpanded && <div className="mt-3 rounded-2xl bg-zinc-50 p-3"><div className="mb-2 text-xs font-black uppercase tracking-wider text-zinc-500">Pilotos cadastrados</div>{drivers.length ? <div className="space-y-2">{drivers.map((driver) => <div key={driver.name} className="flex items-center gap-3 rounded-xl bg-white p-2"><DriverAvatar driver={driver} /><div><div className="text-sm font-black">{driver.name}</div><div className="text-xs text-zinc-600">{driver.nationality} • {driver.role}</div></div></div>)}</div> : <div className="rounded-xl bg-white p-3 text-sm font-bold text-zinc-500">Pilotos completos ainda não cadastrados neste app. Mantive o carro/equipe para consulta rápida.</div>}</div>}
                 </div>
               </CardBox>
             );
@@ -1670,7 +1732,44 @@ export default function NurburgringCompanion() {
       </section>
     )}
 
-    {active === "pilotos" && <section className="space-y-5"><CardBox className="p-5"><div className="grid gap-4 lg:grid-cols-[1fr_260px]"><div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={driverSearch} onChange={(e) => setDriverSearch(e.target.value)} placeholder="Buscar por piloto, equipe, carro, número ou histórico..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div><select value={driverFilter} onChange={(e) => setDriverFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{driverTeams.map((t) => <option key={t}>{t}</option>)}</select></div><div className="mt-4 flex flex-wrap items-center gap-2"><Badge tone="red">{filteredDrivers.length} pilotos em destaque</Badge><Badge tone="gray">histórico + carro + equipe</Badge></div></CardBox><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredDrivers.map((p) => <CardBox key={`${p.name}-${p.carNum}`} className="overflow-hidden"><div className="border-b border-zinc-100 bg-zinc-950 p-5 text-white"><div className="flex items-start justify-between gap-3"><div><div className="text-2xl font-black">{p.name}</div><div className="mt-1 text-sm text-zinc-300">{p.nationality} • {p.role}</div></div><Badge tone="red">{p.carNum}</Badge></div></div><div className="space-y-3 p-5"><div className="rounded-2xl bg-zinc-50 p-4"><div className="text-xs font-black uppercase tracking-wider text-zinc-500">Carro e equipe</div><div className="mt-1 font-black">{p.team}</div><div className="mt-1 text-sm text-zinc-600">{p.car}</div></div><div className="rounded-2xl bg-amber-50 p-4"><div className="text-xs font-black uppercase tracking-wider text-amber-800">Já ganhou?</div><div className="mt-1 text-sm font-bold text-zinc-800">{p.won24h}</div></div><div><div className="text-sm font-black text-red-700">Mini histórico</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.history}</p></div><div><div className="text-sm font-black text-zinc-900">Por que acompanhar</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.watch}</p></div></div></CardBox>)}</div></section>}
+    {active === "pilotos" && (
+      <section className="space-y-5">
+        <CardBox className="p-5">
+          <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+            <div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={driverSearch} onChange={(e) => setDriverSearch(e.target.value)} placeholder="Buscar por piloto, equipe, carro, número ou histórico..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div>
+            <select value={driverFilter} onChange={(e) => setDriverFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{driverTeams.map((t) => <option key={t}>{t}</option>)}</select>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2"><Badge tone="red">{filteredDriverGroups.length} equipes/carros filtrados</Badge><Badge tone="amber">{pilotsSeed.length} pilotos com mini histórico</Badge><Badge tone="blue">6 cards por página</Badge></div>
+        </CardBox>
+
+        <CardBox className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-zinc-600">Mostrando <span className="font-black text-zinc-950">{driverPageStart}</span> a <span className="font-black text-zinc-950">{driverPageEnd}</span> de <span className="font-black text-zinc-950">{filteredDriverGroups.length}</span> carros/equipes</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => setDriversPage((p) => Math.max(1, p - 1))} disabled={driversPage <= 1} className={(driversPage <= 1 ? "bg-zinc-100 text-zinc-400" : "bg-zinc-900 text-white hover:bg-zinc-800") + " rounded-2xl px-4 py-2 text-sm font-black"}>← Anterior</button>
+              <div className="rounded-2xl bg-zinc-100 px-4 py-2 text-sm font-black text-zinc-700">Página {driversPage} de {totalDriverPages}</div>
+              <button onClick={() => setDriversPage((p) => Math.min(totalDriverPages, p + 1))} disabled={driversPage >= totalDriverPages} className={(driversPage >= totalDriverPages ? "bg-zinc-100 text-zinc-400" : "bg-red-700 text-white hover:bg-red-800") + " rounded-2xl px-4 py-2 text-sm font-black"}>Próxima →</button>
+            </div>
+          </div>
+        </CardBox>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {paginatedDriverGroups.map((group) => {
+            const live = liveByNum[group.car.num];
+            const rc = raceGroupByNum[group.car.num];
+            return <CardBox key={group.key} className="overflow-hidden">
+              <div className="border-b border-zinc-100 bg-zinc-950 p-5 text-white">
+                <div className="flex items-start justify-between gap-3"><div><div className="text-2xl font-black">{group.car.num}</div><div className="mt-1 text-sm text-zinc-300">{group.car.team}</div></div><div className="flex flex-wrap justify-end gap-2"><Badge tone="red">{group.car.cls}</Badge>{live && <Badge tone="green">P{live.pos || "—"}</Badge>}{rc && <Badge tone={rc.tone}>RC</Badge>}</div></div>
+                <div className="mt-3 text-sm text-zinc-300">{group.car.car}</div>
+              </div>
+              <div className="space-y-3 p-5">
+                {group.drivers.length ? group.drivers.map((p) => <div key={`${p.name}-${p.carNum}`} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-start gap-3"><DriverAvatar driver={p} /><div className="min-w-0 flex-1"><div className="font-black">{p.name}</div><div className="mt-1 text-xs font-bold text-zinc-500">{p.nationality} • {p.role}</div><div className="mt-2"><Badge tone={p.won24h.toLowerCase().includes("já venceu") ? "green" : "gray"}>{p.won24h}</Badge></div></div></div><div className="mt-3 text-sm font-black text-red-700">Mini histórico</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.history}</p><div className="mt-3 text-sm font-black text-zinc-900">Por que acompanhar</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.watch}</p></div>) : <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-5 text-center"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-zinc-400"><UserRound size={26} /></div><div className="font-black">Pilotos ainda não cadastrados</div><p className="mt-2 text-sm leading-6 text-zinc-600">Este carro está na lista completa, mas ainda não tem pilotos com mini histórico no app. Quando tivermos os nomes, o card já está preparado.</p></div>}
+              </div>
+            </CardBox>;
+          })}
+        </div>
+      </section>
+    )}
 
     {active === "checklist" && <CardBox className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Caça aos carros</h2><p className="mt-1 text-sm text-zinc-600">Quando marcar, o card fica verde de confirmado.</p></div><Badge tone="green">{checkedCount}/{allCars.length} vistos</Badge></div><div className="mt-5 grid gap-3 md:grid-cols-2">{allCars.map((car) => { const isChecked = !!checked[car.num]; return <label key={car.num} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition ${isChecked ? "border-emerald-500 bg-emerald-50 text-emerald-950" : "border-zinc-200 bg-white hover:bg-zinc-50"}`}><input type="checkbox" checked={isChecked} onChange={(e) => setCarChecked(car.num, e.target.checked)} className="h-5 w-5 accent-emerald-700" /><div className="flex-1"><div className="font-black">{car.num} — {car.car}</div><div className="text-sm opacity-75">{car.team}</div></div>{isChecked ? <Badge tone="green">Confirmado</Badge> : <Badge>Pendente</Badge>}</label>; })}</div></CardBox>}
 
