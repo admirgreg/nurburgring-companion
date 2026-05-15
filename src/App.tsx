@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound } from "lucide-react";
+import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound, ShieldCheck, LogOut, LockKeyhole } from "lucide-react";
 
 const STORAGE_KEY = "nurburgring-2026-companion-v6-race-watch";
+const ADMIN_SESSION_KEY = "nurburgring-2026-companion-admin-session";
+const ADMIN_PASSWORD = "ring2026";
 const RACE_START_BRT = "2026-05-16T10:00:00-03:00";
 const RACE_END_BRT = "2026-05-17T10:00:00-03:00";
 const QUALIFYING_FREEZE_BRT = "2026-05-15T10:00:00-03:00";
@@ -2575,6 +2577,8 @@ export default function NurburgringCompanion() {
   const [raceUnreadCount, setRaceUnreadCount] = useState(0);
   const [raceNotice, setRaceNotice] = useState<RaceControlMessage | null>(null);
   const liveWsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const manualDisconnectRef = useRef(false);
   const autoConnectStartedRef = useRef(false);
   const raceMessageKeysRef = useRef<Set<string>>(new Set());
   const [liveEventId, setLiveEventId] = useState("50");
@@ -2592,9 +2596,19 @@ export default function NurburgringCompanion() {
   const [driverFilter, setDriverFilter] = useState("Todos");
   const [driversPage, setDriversPage] = useState(1);
   const driverGroupsPerPage = 6;
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [autoConnectLive, setAutoConnectLive] = useState(true);
+  const [autoReconnectLive, setAutoReconnectLive] = useState(true);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [summaryCopied, setSummaryCopied] = useState(false);
 
   useEffect(() => {
     try {
+      if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "true") setIsAdmin(true);
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -2612,13 +2626,16 @@ export default function NurburgringCompanion() {
         setApiUrl(parsed.apiUrl || "");
         setAutoRefresh(parsed.autoRefresh || false);
         setRefreshSeconds(parsed.refreshSeconds || 30);
+        setLiveEventId(parsed.liveEventId || "50");
+        setAutoConnectLive(parsed.autoConnectLive ?? true);
+        setAutoReconnectLive(parsed.autoReconnectLive ?? true);
       }
     } catch {}
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds }));
-  }, [qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds, liveEventId, autoConnectLive, autoReconnectLive }));
+  }, [qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds, liveEventId, autoConnectLive, autoReconnectLive]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -2634,6 +2651,10 @@ export default function NurburgringCompanion() {
   useEffect(() => {
     if (active === "racecontrol") setRaceUnreadCount(0);
   }, [active]);
+
+  useEffect(() => {
+    if (!isAdmin && active === "auto") setActive("agora");
+  }, [isAdmin, active]);
 
   const fetchApi = async () => {
     if (!apiUrl.trim()) {
@@ -2696,9 +2717,21 @@ export default function NurburgringCompanion() {
     setLiveLog((old) => [`${stamp} — ${text}`, ...old].slice(0, 8));
   };
 
+  const clearReconnectTimer = () => {
+    if (reconnectTimerRef.current) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  };
+
   const connectLiveTiming = () => {
     try {
-      if (liveWsRef.current) liveWsRef.current.close();
+      clearReconnectTimer();
+      manualDisconnectRef.current = false;
+      if (liveWsRef.current) {
+        liveWsRef.current.onclose = null;
+        liveWsRef.current.close();
+      }
       setLiveStatus("conectando");
       setApiError("");
       const ws = new WebSocket("wss://livetiming.azurewebsites.net/");
@@ -2770,6 +2803,13 @@ export default function NurburgringCompanion() {
       ws.onclose = (e) => {
         setLiveStatus("desconectado");
         addLiveLog(`WebSocket fechado: ${e.code || "sem código"}`);
+        if (!manualDisconnectRef.current && autoReconnectLive) {
+          addLiveLog("Tentando reconectar em 5s...");
+          clearReconnectTimer();
+          reconnectTimerRef.current = window.setTimeout(() => {
+            connectLiveTiming();
+          }, 5000);
+        }
       };
     } catch (err: any) {
       setLiveStatus("erro");
@@ -2778,6 +2818,8 @@ export default function NurburgringCompanion() {
   };
 
   const disconnectLiveTiming = () => {
+    manualDisconnectRef.current = true;
+    clearReconnectTimer();
     if (liveWsRef.current) {
       liveWsRef.current.close();
       liveWsRef.current = null;
@@ -2787,20 +2829,22 @@ export default function NurburgringCompanion() {
   };
 
   useEffect(() => {
-    if (autoConnectStartedRef.current) return;
+    if (!autoConnectLive || autoConnectStartedRef.current) return;
     const id = window.setTimeout(() => {
       if (autoConnectStartedRef.current) return;
       autoConnectStartedRef.current = true;
       connectLiveTiming();
     }, 350);
     return () => window.clearTimeout(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoConnectLive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => {
+      manualDisconnectRef.current = true;
+      clearReconnectTimer();
       if (liveWsRef.current) liveWsRef.current.close();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!autoRefresh || !apiUrl.trim()) return;
@@ -2994,6 +3038,15 @@ export default function NurburgringCompanion() {
   const driverPageStart = filteredDriverGroups.length ? (driversPage - 1) * driverGroupsPerPage + 1 : 0;
   const driverPageEnd = Math.min(driversPage * driverGroupsPerPage, filteredDriverGroups.length);
 
+  const visibleTabGroups = useMemo(() => {
+    return tabGroups
+      .map((group) => ({
+        ...group,
+        tabs: group.tabs.filter((tab) => isAdmin || tab.id !== "auto")
+      }))
+      .filter((group) => group.tabs.length > 0);
+  }, [isAdmin]);
+
   const finalResultRows = finalSortedRows.length ? finalSortedRows : sortedQ;
   const finalWinner = finalResultRows[0];
   const finalFavoriteRows = useMemo(() => {
@@ -3030,7 +3083,61 @@ export default function NurburgringCompanion() {
     setRaceMessages([]);
     setRaceUnreadCount(0);
     setRaceNotice(null);
+    setLiveEventId("50");
+    setAutoConnectLive(true);
+    setAutoReconnectLive(true);
+    setLiveLog([]);
     raceMessageKeysRef.current = new Set();
+  };
+
+  const loginAdmin = () => {
+    if (adminPassword.trim() !== ADMIN_PASSWORD) {
+      setAdminError("Senha inválida. Tente novamente.");
+      return;
+    }
+    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+    setIsAdmin(true);
+    setShowAdminLogin(false);
+    setAdminPassword("");
+    setAdminError("");
+  };
+
+  const logoutAdmin = () => {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    setIsAdmin(false);
+    setShowAdminLogin(false);
+    setAdminPassword("");
+    setAdminError("");
+    if (active === "auto") setActive("agora");
+  };
+
+  const protectedResetAll = () => {
+    if (!isAdmin) {
+      setAdminError("Entre como admin para resetar os dados do app.");
+      setShowAdminLogin(true);
+      return;
+    }
+    setResetConfirmOpen(true);
+    setResetConfirmText("");
+  };
+
+  const confirmProtectedReset = () => {
+    if (resetConfirmText.trim().toUpperCase() !== "RESETAR") return;
+    resetAll();
+    setResetConfirmOpen(false);
+    setResetConfirmText("");
+  };
+
+  const copyFinalSummary = async () => {
+    const text = automaticRaceSummary;
+    try {
+      await navigator.clipboard.writeText(text);
+      setSummaryCopied(true);
+      window.setTimeout(() => setSummaryCopied(false), 1800);
+    } catch {
+      setSummaryCopied(false);
+      addLiveLog("Não foi possível copiar o resumo automaticamente.");
+    }
   };
 
   const setCarChecked = (num: string, value: boolean) => setChecked((old) => ({ ...old, [num]: value }));
@@ -3074,7 +3181,7 @@ export default function NurburgringCompanion() {
 
     <section className="mb-5 rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="grid gap-3 xl:grid-cols-[1fr_.85fr_.9fr_.55fr_140px]">
-        {tabGroups.map((group) => (
+        {visibleTabGroups.map((group) => (
           <div key={group.title} className="rounded-3xl bg-zinc-50 p-3">
             <div className="mb-2 px-2 text-[11px] font-black uppercase tracking-widest text-zinc-500">{group.title}</div>
             <div className="flex flex-wrap gap-2">
@@ -3087,10 +3194,61 @@ export default function NurburgringCompanion() {
           </div>
         ))}
         <div className="flex items-end justify-end rounded-3xl bg-zinc-50 p-3">
-          <button onClick={resetAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-zinc-600 shadow-sm hover:bg-zinc-950 hover:text-white"><RotateCcw size={16} /> Resetar</button>
+          {isAdmin ? (
+            <div className="grid w-full gap-2">
+              <button onClick={protectedResetAll} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-zinc-600 shadow-sm hover:bg-red-700 hover:text-white"><RotateCcw size={16} /> Resetar</button>
+              <button onClick={logoutAdmin} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-zinc-800"><LogOut size={16} /> Sair admin</button>
+            </div>
+          ) : (
+            <button onClick={() => { setShowAdminLogin((value) => !value); setAdminError(""); }} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-zinc-600 shadow-sm hover:bg-zinc-950 hover:text-white"><ShieldCheck size={16} /> Admin</button>
+          )}
         </div>
       </div>
     </section>
+
+    {!isAdmin && showAdminLogin && (
+      <section className="mb-6 rounded-[2rem] border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px_130px] lg:items-end">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-zinc-500"><LockKeyhole size={16} /> Modo Admin</div>
+            <h2 className="mt-2 text-2xl font-black">Área protegida</h2>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">Libera a aba Config, conexão operacional e o botão Resetar. A sessão fica salva só nesta aba do navegador.</p>
+          </div>
+          <div>
+            <div className="mb-1 text-xs font-black uppercase tracking-wider text-zinc-500">Senha admin</div>
+            <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") loginAdmin(); }} placeholder="Digite a senha" className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600" />
+            {adminError && <div className="mt-2 text-sm font-bold text-red-700">{adminError}</div>}
+          </div>
+          <button onClick={loginAdmin} className="flex items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-red-800"><ShieldCheck size={17} /> Entrar</button>
+        </div>
+      </section>
+    )}
+
+    {resetConfirmOpen && (
+      <section className="mb-6 rounded-[2rem] border border-red-200 bg-red-50 p-5 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[1fr_260px_260px] lg:items-end">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-red-700"><RotateCcw size={16} /> Confirmação de reset</div>
+            <h2 className="mt-2 text-2xl font-black">Resetar dados locais do app?</h2>
+            <p className="mt-1 text-sm leading-6 text-red-900">Isso limpa favoritos, checklist, snapshots, Race Control, logs e configurações salvas neste navegador. Para confirmar, digite <b>RESETAR</b>.</p>
+          </div>
+          <input value={resetConfirmText} onChange={(e) => setResetConfirmText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmProtectedReset(); }} placeholder="Digite RESETAR" className="w-full rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-black uppercase outline-none focus:border-red-700" />
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            <button onClick={confirmProtectedReset} disabled={resetConfirmText.trim().toUpperCase() !== "RESETAR"} className={(resetConfirmText.trim().toUpperCase() === "RESETAR" ? "bg-red-700 text-white hover:bg-red-800" : "bg-zinc-200 text-zinc-400") + " rounded-2xl px-4 py-3 text-sm font-black"}>Confirmar reset</button>
+            <button onClick={() => { setResetConfirmOpen(false); setResetConfirmText(""); }} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-zinc-700 shadow-sm hover:bg-zinc-950 hover:text-white">Cancelar</button>
+          </div>
+        </div>
+      </section>
+    )}
+
+    {isAdmin && (
+      <section className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-950 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2"><ShieldCheck size={18} /> Modo Admin ativo — Configurações e Resetar liberados nesta sessão.</div>
+          <button onClick={logoutAdmin} className="rounded-2xl bg-white px-4 py-2 font-black text-emerald-900 shadow-sm hover:bg-emerald-900 hover:text-white">Logout</button>
+        </div>
+      </section>
+    )}
 
     <section className="mb-6 grid gap-3 md:grid-cols-4">
       <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -3161,6 +3319,7 @@ export default function NurburgringCompanion() {
                 <div className="mb-2 flex flex-wrap gap-2"><Badge tone="green">Pós-corrida</Badge><Badge tone="gray">snapshot final</Badge></div>
                 <h2 className="text-2xl font-black">Resumo final automático</h2>
                 <p className="mt-2 max-w-4xl text-sm leading-6 text-zinc-700">{automaticRaceSummary}</p>
+                <button onClick={copyFinalSummary} className="mt-4 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-zinc-800">{summaryCopied ? "Resumo copiado" : "Copiar resumo final"}</button>
               </div>
               <div className="rounded-2xl bg-white p-4 text-right">
                 <div className="text-xs font-black uppercase tracking-wider text-zinc-500">Snapshot salvo</div>
@@ -3288,7 +3447,7 @@ export default function NurburgringCompanion() {
             <div className="flex flex-wrap items-center gap-2"><Badge tone={apiStatus === "ok" ? "green" : "gray"}>{apiStatus === "ok" ? "conectado" : "manual"}</Badge><Badge tone="blue">{filteredLiveRows.length}/{sortedQ.length} carros</Badge>{raceUnreadCount > 0 && <Badge tone="red">{raceUnreadCount} RC novo</Badge>}</div>
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_200px_auto_auto]">
-            <div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={liveSearch} onChange={(e) => setLiveSearch(e.target.value)} placeholder="Buscar n?mero, equipe, carro, classe ou tempo..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div>
+            <div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={liveSearch} onChange={(e) => setLiveSearch(e.target.value)} placeholder="Buscar número, equipe, carro, classe ou tempo..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div>
             <select value={liveClassFilter} onChange={(e) => setLiveClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{liveClasses.map((c) => <option key={c}>{c}</option>)}</select>
             <label className={(liveOnlyFavorites ? "border-red-200 bg-red-50 text-red-900" : "border-zinc-200 bg-white text-zinc-700") + " flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-black"}><input type="checkbox" checked={liveOnlyFavorites} onChange={(e) => setLiveOnlyFavorites(e.target.checked)} className="h-4 w-4 accent-red-700" />Favoritos</label>
             <label className={(liveOnlyRaceControl ? "border-red-200 bg-red-50 text-red-900" : "border-zinc-200 bg-white text-zinc-700") + " flex cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-black"}><input type="checkbox" checked={liveOnlyRaceControl} onChange={(e) => setLiveOnlyRaceControl(e.target.checked)} className="h-4 w-4 accent-red-700" />Com RC</label>
@@ -3305,9 +3464,9 @@ export default function NurburgringCompanion() {
         </div>
 
         <CardBox className="overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="max-h-[720px] overflow-auto">
             <table className="w-full min-w-[1100px] text-sm">
-              <thead className="bg-zinc-950 text-left text-white">
+              <thead className="sticky top-0 z-10 bg-zinc-950 text-left text-white">
                 <tr><th className="px-3 py-3">Pos</th><th className="px-3 py-3">Nº</th><th className="px-3 py-3">Equipe/Piloto</th><th className="px-3 py-3">Carro</th><th className="px-3 py-3">Classe</th><th className="px-3 py-3">Tempo</th><th className="px-3 py-3">Gap</th><th className="px-3 py-3">Race Control</th></tr>
               </thead>
               <tbody>{filteredLiveRows.map((r, idx) => <LiveTimingRow key={r.num + "-" + idx} row={r} index={idx} leaderTime={filteredLeaderTime} raceGroup={raceGroupByNum[r.num]} isFavorite={!!favorites[r.num]} />)}</tbody>
@@ -3315,7 +3474,7 @@ export default function NurburgringCompanion() {
           </div>
         </CardBox>
 
-        <CardBox className="p-5"><h2 className="text-2xl font-black">L?deres por classe</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{liveLeadersByClass.slice(0, 12).map(({ cls, row }) => <div key={cls} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-center justify-between"><Badge tone={getLiveClassTone(cls)}>{cls}</Badge><div className="font-black">P{row.pos || "—"}</div></div><div className="mt-2 text-lg font-black">{row.num}</div><div className="text-sm font-bold">{row.team}</div><div className="text-xs text-zinc-600">{row.car}</div><div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-sm font-black text-red-700">{row.time || "sem tempo"}</span>{favorites[row.num] && <Badge tone="amber">★</Badge>}{raceGroupByNum[row.num] && <Badge tone={raceGroupByNum[row.num].tone}>RC</Badge>}</div></div>)}</div></CardBox>
+        <CardBox className="p-5"><h2 className="text-2xl font-black">Líderes por classe</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{liveLeadersByClass.slice(0, 12).map(({ cls, row }) => <div key={cls} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-center justify-between"><Badge tone={getLiveClassTone(cls)}>{cls}</Badge><div className="font-black">P{row.pos || "—"}</div></div><div className="mt-2 text-lg font-black">{row.num}</div><div className="text-sm font-bold">{row.team}</div><div className="text-xs text-zinc-600">{row.car}</div><div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-sm font-black text-red-700">{row.time || "sem tempo"}</span>{favorites[row.num] && <Badge tone="amber">★</Badge>}{raceGroupByNum[row.num] && <Badge tone={raceGroupByNum[row.num].tone}>RC</Badge>}</div></div>)}</div></CardBox>
       </section>
     )}
 
@@ -3449,9 +3608,9 @@ export default function NurburgringCompanion() {
         </div>
 
         <CardBox className="overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="max-h-[68vh] overflow-auto">
             <table className="w-full min-w-[980px] text-sm">
-              <thead className="bg-zinc-950 text-left text-white">
+              <thead className="sticky top-0 z-10 bg-zinc-950 text-left text-white">
                 <tr>
                   <th className="px-3 py-3">Pos</th>
                   <th className="px-3 py-3">Nº</th>
@@ -3481,7 +3640,7 @@ export default function NurburgringCompanion() {
       </section>
     )}
 
-    {active === "auto" && (
+    {active === "auto" && isAdmin && (
       <section className="space-y-5">
         <CardBox className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -3509,6 +3668,17 @@ export default function NurburgringCompanion() {
                 <p className="mt-1 text-sm text-zinc-600">Conecta em wss://livetiming.azurewebsites.net/ e assina eventPid [0,3,4,7].</p>
               </div>
               <Badge tone={liveStatus === "conectado" ? "green" : liveStatus === "erro" ? "red" : liveStatus === "conectando" ? "amber" : "gray"}>{liveStatus}</Badge>
+            </div>
+
+            <div className="mb-4 grid gap-3 md:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm font-black text-zinc-700">
+                <input type="checkbox" checked={autoConnectLive} onChange={(e) => setAutoConnectLive(e.target.checked)} className="h-5 w-5 accent-red-700" />
+                Auto conectar ao abrir o app
+              </label>
+              <label className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm font-black text-zinc-700">
+                <input type="checkbox" checked={autoReconnectLive} onChange={(e) => setAutoReconnectLive(e.target.checked)} className="h-5 w-5 accent-red-700" />
+                Reconectar se cair
+              </label>
             </div>
 
             <div className="grid gap-3 md:grid-cols-[160px_1fr]">
