@@ -44,17 +44,37 @@ const q1Seed: QRow[] = [
 ];
 
 const agenda = [
-  { day: "Qui 14/05", br: "08:10", item: "Qualifying 1", tag: "Q1", iso: "2026-05-14T08:10:00-03:00" },
-  { day: "Qui 14/05", br: "14:55", item: "Qualifying 2", tag: "Q2", iso: "2026-05-14T14:55:00-03:00" },
-  { day: "Sex 15/05", br: "03:45", item: "Top Qualifying 1", tag: "Top Q1", iso: "2026-05-15T03:45:00-03:00" },
-  { day: "Sex 15/05", br: "04:40", item: "Top Qualifying 2", tag: "Top Q2", iso: "2026-05-15T04:40:00-03:00" },
-  { day: "Sex 15/05", br: "05:30", item: "Qualifying 3", tag: "Q3", iso: "2026-05-15T05:30:00-03:00" },
-  { day: "Sex 15/05", br: "08:30", item: "Top Qualifying 3", tag: "Top Q3", iso: "2026-05-15T08:30:00-03:00" },
-  { day: "Sáb 16/05", br: "05:00", item: "Warm-up", tag: "Pré", iso: "2026-05-16T05:00:00-03:00" },
-  { day: "Sáb 16/05", br: "09:40", item: "Volta de formação", tag: "Grid", iso: "2026-05-16T09:40:00-03:00" },
-  { day: "Sáb 16/05", br: "10:00", item: "Largada das 24h", tag: "Corrida", iso: RACE_START_BRT },
-  { day: "Dom 17/05", br: "10:00", item: "Chegada", tag: "Final", iso: RACE_END_BRT }
+  { day: "Qui 14/05", br: "08:10", item: "Qualifying 1", tag: "Q1", iso: "2026-05-14T08:10:00-03:00", durationMin: 125 },
+  { day: "Qui 14/05", br: "14:55", item: "Qualifying 2", tag: "Q2", iso: "2026-05-14T14:55:00-03:00", durationMin: 215 },
+  { day: "Sex 15/05", br: "03:45", item: "Top Qualifying 1", tag: "Top Q1", iso: "2026-05-15T03:45:00-03:00", durationMin: 30 },
+  { day: "Sex 15/05", br: "04:40", item: "Top Qualifying 2", tag: "Top Q2", iso: "2026-05-15T04:40:00-03:00", durationMin: 30 },
+  { day: "Sex 15/05", br: "05:30", item: "Qualifying 3", tag: "Q3", iso: "2026-05-15T05:30:00-03:00", durationMin: 65 },
+  { day: "Sex 15/05", br: "08:30", item: "Top Qualifying 3", tag: "Top Q3", iso: "2026-05-15T08:30:00-03:00", durationMin: 60 },
+  { day: "Sáb 16/05", br: "05:00", item: "Warm-up", tag: "Pré", iso: "2026-05-16T05:00:00-03:00", durationMin: 60 },
+  { day: "Sáb 16/05", br: "09:40", item: "Volta de formação", tag: "Grid", iso: "2026-05-16T09:40:00-03:00", durationMin: 20 },
+  { day: "Sáb 16/05", br: "10:00", item: "Largada das 24h", tag: "Corrida", iso: RACE_START_BRT, durationMin: 1440 },
+  { day: "Dom 17/05", br: "10:00", item: "Chegada", tag: "Final", iso: RACE_END_BRT, durationMin: 30 }
 ];
+
+function getAgendaStatus(a: (typeof agenda)[number], timestamp: number) {
+  const start = new Date(a.iso).getTime();
+  const end = start + a.durationMin * 60 * 1000;
+  if (timestamp < start) return "Depois";
+  if (timestamp >= start && timestamp < end) return "Agora";
+  return "Concluído";
+}
+
+function agendaTone(status: string) {
+  if (status === "Concluído") return "green";
+  if (status === "Agora") return "red";
+  return "gray";
+}
+
+function agendaCardClass(status: string) {
+  if (status === "Concluído") return "border-emerald-300 bg-emerald-50";
+  if (status === "Agora") return "border-red-300 bg-red-50 ring-2 ring-red-100";
+  return "border-zinc-100 bg-zinc-50";
+}
 
 const references = [
   { year: 2026, session: "Q1", p1: "#80 Mercedes-AMG", best: "8:14.957", p10: "8:27.176", window: "+12.219s", note: "Sessão inicial" },
@@ -683,8 +703,6 @@ export default function NurburgringCompanion() {
   const [carSearch, setCarSearch] = useState("");
   const [carClassFilter, setCarClassFilter] = useState("Todos");
   const [carGroupFilter, setCarGroupFilter] = useState("Todos");
-  const [carsPage, setCarsPage] = useState(1);
-  const carsPerPage = 10;
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState("Todos");
 
@@ -923,7 +941,9 @@ export default function NurburgringCompanion() {
   const raceStarted = now >= raceStart;
   const raceFinished = now >= raceEnd;
   const raceProgress = Math.min(100, Math.max(0, ((now - raceStart) / (raceEnd - raceStart)) * 100));
+  const currentSession = useMemo(() => agenda.find((a) => getAgendaStatus(a, now) === "Agora") || null, [now]);
   const nextSession = useMemo(() => agenda.find((a) => new Date(a.iso).getTime() > now) || agenda[agenda.length - 1], [now]);
+  const agendaWithStatus = useMemo(() => agenda.map((a) => ({ ...a, status: getAgendaStatus(a, now) })), [now]);
   const classOptions = useMemo(() => ["Todos", ...Array.from(new Set(allCars.map((c) => c.cls).filter(Boolean))).sort()], [allCars]);
   const groupOptions = useMemo(() => ["Todos", ...Array.from(new Set(allCars.map((c) => c.group).filter(Boolean))).sort()], [allCars]);
   const filteredCars = useMemo(() => {
@@ -935,21 +955,6 @@ export default function NurburgringCompanion() {
       return okClass && okGroup && (!q || hay.includes(q));
     });
   }, [allCars, carSearch, carClassFilter, carGroupFilter]);
-  useEffect(() => {
-    setCarsPage(1);
-  }, [carSearch, carClassFilter, carGroupFilter]);
-
-  const totalCarPages = Math.max(1, Math.ceil(filteredCars.length / carsPerPage));
-
-  const paginatedCars = useMemo(() => {
-    const safePage = Math.min(Math.max(carsPage, 1), totalCarPages);
-    const start = (safePage - 1) * carsPerPage;
-    return filteredCars.slice(start, start + carsPerPage);
-  }, [filteredCars, carsPage, totalCarPages]);
-
-  const carPageStart = filteredCars.length ? (Math.min(Math.max(carsPage, 1), totalCarPages) - 1) * carsPerPage + 1 : 0;
-  const carPageEnd = Math.min(Math.min(Math.max(carsPage, 1), totalCarPages) * carsPerPage, filteredCars.length);
-
   const checkedCount = allCars.filter((c) => checked[c.num]).length;
   const favoriteCars = useMemo(() => allCars.filter((c) => favorites[c.num]), [allCars, favorites]);
   const liveByNum = useMemo(() => {
@@ -1183,7 +1188,7 @@ export default function NurburgringCompanion() {
       </section>
     )}
 
-    {active === "agora" && <section className="space-y-5"><div className="grid gap-5 md:grid-cols-3"><StatBox title="Próxima sessão" value={`${nextSession.day} ${nextSession.br}`} note={nextSession.item} tone="amber" /><StatBox title="Falta para a largada" value={raceStarted ? "Corrida iniciada" : formatDuration(raceStart - now)} note="Largada prevista: sábado 10:00 BRT" tone="red" /><StatBox title={raceFinished ? "Corrida encerrada" : raceStarted ? "Tempo restante" : "Duração da corrida"} value={raceFinished ? "Final" : raceStarted ? formatDuration(raceEnd - now) : "24h"} note={raceStarted && !raceFinished ? `Decorridos: ${formatDuration(now - raceStart)}` : "Cronômetro ativa automaticamente na largada"} tone="green" /></div>{raceStarted && !raceFinished && <CardBox className="p-5"><div className="mb-2 flex items-center justify-between"><h2 className="text-xl font-black">Progresso das 24h</h2><Badge tone="red">{raceProgress.toFixed(1)}%</Badge></div><div className="h-4 overflow-hidden rounded-full bg-zinc-200"><div className="h-full bg-red-700" style={{ width: `${raceProgress}%` }} /></div></CardBox>}<section className="grid gap-5 lg:grid-cols-[1fr_.9fr]"><CardBox className="p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-black">Agenda rápida</h2><Badge tone="blue">BRT</Badge></div><div className="space-y-3">{agenda.map((a, idx) => <div key={idx} className="grid grid-cols-[100px_90px_1fr_auto] items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-3 text-sm"><div className="font-black">{a.day}</div><div className="rounded-xl bg-zinc-900 px-3 py-2 text-center font-black text-white">{a.br}</div><div>{a.item}</div><Badge tone={a.tag === "Corrida" ? "red" : a.tag.includes("Q") ? "amber" : "gray"}>{a.tag}</Badge></div>)}</div></CardBox><CardBox className="p-5"><h2 className="text-2xl font-black">Leitura do momento</h2><div className="mt-4 grid gap-3"><div className="rounded-2xl bg-red-50 p-4"><div className="text-sm font-bold text-red-800">Referência Q1</div><div className="mt-1 text-2xl font-black">#80 — 8:14.957</div><p className="mt-1 text-sm text-zinc-700">Tempo a bater na próxima classificação provisória.</p></div><div className="rounded-2xl bg-zinc-50 p-4"><div className="text-sm font-bold text-zinc-700">Carros no radar</div><p className="mt-1 text-sm leading-6">#80, #1, #3, #99, #911, #64 e #130.</p></div></div></CardBox></section></section>}
+    {active === "agora" && <section className="space-y-5"><div className="grid gap-5 md:grid-cols-4"><StatBox title="Pulso da corrida" value={liveMeta.updated || new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} note={`Live Timing: ${liveStatus}`} tone={liveStatus === "conectado" ? "green" : "gray"} /><StatBox title="Sessão atual" value={currentSession ? `${currentSession.br}` : "—"} note={currentSession ? currentSession.item : "Nenhuma sessão em andamento"} tone={currentSession ? "red" : "gray"} /><StatBox title="Próxima sessão" value={`${nextSession.day} ${nextSession.br}`} note={nextSession.item} tone="amber" /><StatBox title={raceFinished ? "Corrida encerrada" : raceStarted ? "Tempo restante" : "Falta para a largada"} value={raceFinished ? "Final" : raceStarted ? formatDuration(raceEnd - now) : formatDuration(raceStart - now)} note={raceStarted && !raceFinished ? `Decorridos: ${formatDuration(now - raceStart)}` : "Sábado 10:00 BRT"} tone="green" /></div>{raceStarted && !raceFinished && <CardBox className="p-5"><div className="mb-2 flex items-center justify-between"><h2 className="text-xl font-black">Progresso das 24h</h2><Badge tone="red">{raceProgress.toFixed(1)}%</Badge></div><div className="h-4 overflow-hidden rounded-full bg-zinc-200"><div className="h-full bg-red-700" style={{ width: `${raceProgress}%` }} /></div></CardBox>}<CardBox className="p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Agenda rápida</h2><p className="mt-1 text-sm text-zinc-600">Status calculado pelo horário de Brasília: concluído, agora ou depois.</p></div><Badge tone="blue">BRT</Badge></div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">{agendaWithStatus.map((a, idx) => <div key={idx} className={`rounded-2xl border p-4 text-sm transition ${agendaCardClass(a.status)}`}><div className="mb-3 flex items-center justify-between gap-2"><Badge tone={agendaTone(a.status)}>{a.status}</Badge><Badge tone={a.tag === "Corrida" ? "red" : a.tag.includes("Q") ? "amber" : "gray"}>{a.tag}</Badge></div><div className="text-xs font-black uppercase tracking-wider text-zinc-500">{a.day}</div><div className="mt-1 text-2xl font-black">{a.br}</div><div className="mt-2 font-black">{a.item}</div><div className="mt-1 text-xs text-zinc-500">Duração aprox.: {a.durationMin >= 60 ? `${Math.floor(a.durationMin / 60)}h${a.durationMin % 60 ? ` ${a.durationMin % 60}min` : ""}` : `${a.durationMin}min`}</div></div>)}</div></CardBox></section>}
 
     {active === "racewatch" && (
       <section className="space-y-5">
@@ -1423,58 +1428,11 @@ export default function NurburgringCompanion() {
             <select value={carClassFilter} onChange={(e) => setCarClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{classOptions.map((c) => <option key={c}>{c}</option>)}</select>
             <select value={carGroupFilter} onChange={(e) => setCarGroupFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{groupOptions.map((g) => <option key={g}>{g}</option>)}</select>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros filtrados</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">10 por página</Badge><Badge tone="gray">Página {carsPage} de {totalCarPages}</Badge><Badge tone={raceStats.attention ? "red" : "green"}>{raceStats.attention} alertas RC</Badge></div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros vis?veis</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">161 cards</Badge><Badge tone={raceStats.attention ? "red" : "green"}>{raceStats.attention} alertas RC</Badge></div>
         </CardBox>
-
-        <CardBox className="p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-zinc-600">
-              Mostrando <span className="font-black text-zinc-950">{carPageStart}</span> a <span className="font-black text-zinc-950">{carPageEnd}</span> de <span className="font-black text-zinc-950">{filteredCars.length}</span> carros
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setCarsPage(1)}
-                disabled={carsPage <= 1}
-                className={(carsPage <= 1 ? "bg-zinc-100 text-zinc-400" : "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50") + " rounded-2xl px-4 py-2 text-sm font-black"}
-              >
-                Primeira
-              </button>
-
-              <button
-                onClick={() => setCarsPage((p) => Math.max(1, p - 1))}
-                disabled={carsPage <= 1}
-                className={(carsPage <= 1 ? "bg-zinc-100 text-zinc-400" : "bg-zinc-900 text-white hover:bg-zinc-800") + " rounded-2xl px-4 py-2 text-sm font-black"}
-              >
-                ← Anterior
-              </button>
-
-              <div className="rounded-2xl bg-zinc-100 px-4 py-2 text-sm font-black text-zinc-700">
-                {carsPage} / {totalCarPages}
-              </div>
-
-              <button
-                onClick={() => setCarsPage((p) => Math.min(totalCarPages, p + 1))}
-                disabled={carsPage >= totalCarPages}
-                className={(carsPage >= totalCarPages ? "bg-zinc-100 text-zinc-400" : "bg-red-700 text-white hover:bg-red-800") + " rounded-2xl px-4 py-2 text-sm font-black"}
-              >
-                Próxima →
-              </button>
-
-              <button
-                onClick={() => setCarsPage(totalCarPages)}
-                disabled={carsPage >= totalCarPages}
-                className={(carsPage >= totalCarPages ? "bg-zinc-100 text-zinc-400" : "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50") + " rounded-2xl px-4 py-2 text-sm font-black"}
-              >
-                Última
-              </button>
-            </div>
-          </div>
-        </CardBox>
-
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {paginatedCars.map((c) => {
+          {filteredCars.map((c) => {
             const live = liveByNum[c.num];
             const group = raceGroupByNum[c.num];
             const borderClass = group ? (group.tone === "red" ? "border-red-300" : group.tone === "amber" ? "border-amber-300" : "border-blue-300") : "";
