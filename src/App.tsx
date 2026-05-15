@@ -336,7 +336,7 @@ const tabs = [
   { id: "agora", label: "Agora", icon: Clock },
   { id: "racewatch", label: "Race Watch", icon: Activity },
   { id: "quali", label: "Qualifying", icon: Trophy },
-  { id: "auto", label: "Auto/API", icon: Wifi },
+  { id: "auto", label: "Config", icon: Wifi },
   { id: "live", label: "Live Timing", icon: Wifi },
   { id: "racecontrol", label: "Race Control", icon: Flag },
   { id: "carros", label: "Carros", icon: Car },
@@ -1418,7 +1418,114 @@ export default function NurburgringCompanion() {
 
     {active === "quali" && <CardBox className="p-5"><h2 className="mb-4 text-2xl font-black">Tabela editável de classificação</h2><div className="overflow-x-auto"><table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm"><thead><tr className="text-left text-xs uppercase text-zinc-500"><th className="px-3">Pos</th><th>Nº</th><th>Classe</th><th>Equipe</th><th>Carro</th><th>Tempo</th><th>Gap</th></tr></thead><tbody>{sortedQ.map((row: any) => <tr key={row._idx} className="rounded-2xl bg-white shadow-sm"><td className="rounded-l-2xl px-3 py-2 font-black">{row.pos}</td><td className="py-2"><Input value={row.num} onChange={(v) => updateRow(row._idx, "num", v)} /></td><td className="py-2"><Input value={row.cls || ""} onChange={(v) => updateRow(row._idx, "cls", v)} /></td><td className="py-2"><Input value={row.team} onChange={(v) => updateRow(row._idx, "team", v)} /></td><td className="py-2"><Input value={row.car} onChange={(v) => updateRow(row._idx, "car", v)} /></td><td className="py-2"><Input value={row.time} onChange={(v) => updateRow(row._idx, "time", v)} placeholder="8:14.957" /></td><td className="rounded-r-2xl py-2 font-black text-red-700">{gap(row.time, bestTime)}</td></tr>)}</tbody></table></div></CardBox>}
 
-    {active === "auto" && <section className="grid gap-5 lg:grid-cols-[1fr_.8fr]"><CardBox className="p-5"><div className="mb-4 flex items-center gap-3"><Wifi className="text-red-700" /><h2 className="text-2xl font-black">Busca automática / API</h2></div><p className="mb-4 text-sm leading-6 text-zinc-600">Cole uma URL que retorne JSON ou use o conector WebSocket do live timing.</p><Input value={apiUrl} onChange={setApiUrl} placeholder="https://seu-endpoint.com/timing.json" /><div className="mt-4 grid gap-3 md:grid-cols-[1fr_140px]"><label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 text-sm font-bold"><input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="h-5 w-5 accent-red-700" />Atualizar JSON automaticamente</label><Input value={String(refreshSeconds)} onChange={(v) => setRefreshSeconds(Number(v) || 30)} /></div><div className="mt-4 flex flex-wrap gap-3"><button onClick={fetchApi} className="flex items-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><RefreshCcw size={16} />Buscar JSON agora</button><a href="https://www.24h-rennen.de/en/live-en/" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white"><ExternalLink size={16} />Live oficial</a></div>{apiError && <div className="mt-4 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-800">Erro: {apiError}</div>}</CardBox><CardBox className="p-5"><h3 className="text-xl font-black">Status</h3><div className="mt-4 rounded-2xl bg-zinc-50 p-4"><div className="flex items-center gap-2 font-black">{apiStatus === "ok" ? <Wifi size={18} className="text-emerald-700" /> : apiStatus === "erro" ? <WifiOff size={18} className="text-red-700" /> : <Timer size={18} className="text-zinc-600" />}{apiStatus === "ok" ? "Conectado" : apiStatus === "buscando" ? "Buscando..." : apiStatus === "erro" ? "Erro na API" : "Modo manual"}</div><p className="mt-2 text-sm text-zinc-600">Última atualização: {lastUpdated || "ainda não buscou"}</p></div></CardBox><CardBox className="p-5 lg:col-span-2"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Live Timing WebSocket</h2><p className="mt-1 text-sm text-zinc-600">Conecta em wss://livetiming.azurewebsites.net/ e assina eventPid [0,3,4,7].</p></div><Badge tone={liveStatus === "conectado" ? "green" : liveStatus === "erro" ? "red" : liveStatus === "conectando" ? "amber" : "gray"}>{liveStatus}</Badge></div><div className="grid gap-3 md:grid-cols-[180px_1fr_150px_150px]"><Input value={liveEventId} onChange={setLiveEventId} placeholder="Event ID" /><div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm"><b>Evento:</b> {liveMeta.heat || "—"}<br /><span className="text-zinc-600">Sessão: {liveMeta.session || "—"} • Pista: {liveMeta.track || "—"}</span></div><button onClick={connectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><Wifi size={17} />Conectar</button><button onClick={disconnectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white"><WifiOff size={17} />Desconectar</button></div><div className="mt-4 grid gap-3 md:grid-cols-5"><StatBox title="Carros recebidos" value={String(liveMeta.cars || 0)} note="do pacote RESULT" tone="blue" /><StatBox title="Race Control" value={String(raceMessages.length)} note="mensagens PID 3" tone="red" /><StatBox title="Estado da pista" value={liveTrackState} note="PID 4" tone="amber" /><StatBox title="Atualizado" value={liveMeta.updated || "—"} note="último pacote" /><StatBox title="Tabela" value={String(qRows.length)} note="linhas carregadas" tone="green" /></div><div className="mt-4 rounded-2xl bg-zinc-50 p-4"><div className="mb-2 text-sm font-black uppercase tracking-wider text-zinc-500">Log da conexão</div><div className="space-y-1 text-sm text-zinc-700">{liveLog.length ? liveLog.map((l, i) => <div key={i}>{l}</div>) : <div>Nenhum evento ainda.</div>}</div></div></CardBox></section>}
+    {active === "auto" && (
+      <section className="space-y-5">
+        <CardBox className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <Wifi className="text-red-700" size={22} />
+                <h2 className="text-2xl font-black">Configurações</h2>
+              </div>
+              <p className="max-w-3xl text-sm leading-6 text-zinc-600">
+                Central operacional do app: conexão WebSocket, Event ID, logs, JSON manual e status da integração.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={liveStatus === "conectado" ? "green" : liveStatus === "erro" ? "red" : liveStatus === "conectando" ? "amber" : "gray"}>{liveStatus}</Badge>
+              <Badge tone={apiStatus === "ok" ? "green" : apiStatus === "erro" ? "red" : apiStatus === "buscando" ? "amber" : "gray"}>{apiStatus}</Badge>
+            </div>
+          </div>
+        </CardBox>
+
+        <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
+          <CardBox className="p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-black">Live Timing WebSocket</h3>
+                <p className="mt-1 text-sm text-zinc-600">Conecta em wss://livetiming.azurewebsites.net/ e assina eventPid [0,3,4,7].</p>
+              </div>
+              <Badge tone={liveStatus === "conectado" ? "green" : liveStatus === "erro" ? "red" : liveStatus === "conectando" ? "amber" : "gray"}>{liveStatus}</Badge>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[160px_1fr]">
+              <div>
+                <div className="mb-1 text-xs font-black uppercase tracking-wider text-zinc-500">Event ID</div>
+                <Input value={liveEventId} onChange={setLiveEventId} placeholder="50" />
+              </div>
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+                <div><b>Evento:</b> {liveMeta.heat || "—"}</div>
+                <div className="mt-1 text-zinc-600">Sessão: {liveMeta.session || "—"} • Pista: {liveMeta.track || "—"}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <button onClick={connectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-red-800">
+                <Wifi size={17} /> Conectar
+              </button>
+              <button onClick={disconnectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-zinc-800">
+                <WifiOff size={17} /> Desconectar
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <StatBox title="Carros" value={String(liveMeta.cars || 0)} note="RESULT / PID 0" tone="blue" />
+              <StatBox title="Race Control" value={String(raceMessages.length)} note="mensagens PID 3" tone={raceMessages.length ? "red" : "green"} />
+              <StatBox title="Pista" value={liveTrackState} note="TRACKSTATE / PID 4" tone="amber" />
+              <StatBox title="Último pacote" value={liveMeta.updated || lastUpdated || "—"} note="horário local" />
+            </div>
+          </CardBox>
+
+          <CardBox className="p-5">
+            <h3 className="text-xl font-black">JSON manual / fallback</h3>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              Use só se tivermos um endpoint próprio. O WebSocket continua sendo a fonte principal para o live timing.
+            </p>
+
+            <div className="mt-4">
+              <div className="mb-1 text-xs font-black uppercase tracking-wider text-zinc-500">URL JSON</div>
+              <Input value={apiUrl} onChange={setApiUrl} placeholder="https://seu-endpoint.com/timing.json" />
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_140px]">
+              <label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 text-sm font-bold">
+                <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="h-5 w-5 accent-red-700" />
+                Atualizar JSON automaticamente
+              </label>
+              <Input value={String(refreshSeconds)} onChange={(v) => setRefreshSeconds(Number(v) || 30)} />
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button onClick={fetchApi} className="flex items-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white">
+                <RefreshCcw size={16} /> Buscar JSON agora
+              </button>
+              <a href="https://www.24h-rennen.de/en/live-en/" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white">
+                <ExternalLink size={16} /> Live oficial
+              </a>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-zinc-50 p-4 text-sm">
+              <div className="flex items-center gap-2 font-black">
+                {apiStatus === "ok" ? <Wifi size={18} className="text-emerald-700" /> : apiStatus === "erro" ? <WifiOff size={18} className="text-red-700" /> : <Timer size={18} className="text-zinc-600" />}
+                {apiStatus === "ok" ? "JSON conectado" : apiStatus === "buscando" ? "Buscando JSON..." : apiStatus === "erro" ? "Erro no JSON" : "JSON em segundo plano"}
+              </div>
+              <p className="mt-2 text-zinc-600">Última atualização: {lastUpdated || "ainda não buscou"}</p>
+              {apiError && <div className="mt-3 rounded-xl bg-red-50 p-3 font-semibold text-red-800">Erro: {apiError}</div>}
+            </div>
+          </CardBox>
+        </div>
+
+        <CardBox className="p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-xl font-black">Log da conexão</h3>
+            <Badge tone={liveLog.length ? "blue" : "gray"}>{liveLog.length} registros</Badge>
+          </div>
+          <div className="max-h-72 overflow-auto rounded-2xl bg-zinc-950 p-4 font-mono text-xs text-zinc-100">
+            {liveLog.length ? liveLog.map((l, i) => <div key={i} className="border-b border-white/10 py-1 last:border-b-0">{l}</div>) : <div className="text-zinc-400">Nenhum evento ainda.</div>}
+          </div>
+        </CardBox>
+      </section>
+    )}
 
     {active === "carros" && (
       <section className="space-y-5">
