@@ -1,24 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="bg" x1="10" x2="54" y1="6" y2="58" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#18181b"/>
-      <stop offset="1" stop-color="#020617"/>
-    </linearGradient>
-    <linearGradient id="red" x1="14" x2="52" y1="15" y2="50" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ff3b30"/>
-      <stop offset="1" stop-color="#991b1b"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
-  <path d="M16 41c4.8 7.1 13.9 9.8 22.1 6.2 8.8-3.9 13.1-13.9 9.7-22.5-3.1-7.9-11.9-12.5-20.2-10.3-7.8 2.1-12.6 9.6-10.7 16.7 1.5 5.5 7.2 8.7 12.7 7.1 4.5-1.3 7.4-5.5 6.4-9.5" fill="none" stroke="url(#red)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M22 21h8.5c3.7 0 6.5 2.1 6.5 5.1 0 2.6-1.8 4.2-4.7 5.7L22 37.2V43h18" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M46 20v23M36 34h17" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <g transform="translate(43 45)">
-    <rect width="4" height="4" fill="#fff"/>
-    <rect x="4" width="4" height="4" fill="#18181b"/>
-    <rect x="8" width="4" height="4" fill="#fff"/>
-    <rect y="4" width="4" height="4" fill="#18181b"/>
-    <rect x="4" y="4" width="4" height="4" fill="#fff"/>
-    <rect x="8" y="4" width="4" height="4" fill="#18181b"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="22" fill="#ffffff"/>
+  <path d="M35 9 22 23l1 16-13 12 18 19h24L39 83l-2 19-20 17 2 10 28-25h21l14-15h21l14-14V58l-13-14-13 5-13-12H58L51 24H39Z" fill="none" stroke="#c8c1c1" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M35 9 22 23l1 16-13 12 18 19h24L39 83l-2 19-20 17 2 10 28-25h21l14-15h21l14-14V58l-13-14-13 5-13-12H58L51 24H39Z" fill="none" stroke="#6f6969" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(24 75) skewX(-12)">
+    <text x="0" y="0" fill="#ee171f" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="20" font-style="italic" font-weight="900" textLength="90" lengthAdjust="spacingAndGlyphs">nürburgring</text>
   </g>
 </svg>

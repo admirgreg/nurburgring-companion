@@ -2535,8 +2535,8 @@ function LiveTimingRow({ row, index, leaderTime, raceGroup, isFavorite }: { row:
 }
 function PhotoBox({ src, label }: { src: string; label: string }) {
   const [failed, setFailed] = useState(false);
-  if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className="h-40 w-full rounded-2xl object-contain bg-zinc-50 p-2" />;
-  return <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400"><div className="text-center"><ImageIcon className="mx-auto mb-1" size={26} /><div className="text-xs font-bold">Sem foto</div></div></div>;
+  if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className="h-32 w-full rounded-2xl bg-zinc-50 object-contain p-2 sm:h-40" />;
+  return <div className="flex h-32 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 sm:h-40"><div className="text-center"><ImageIcon className="mx-auto mb-1" size={26} /><div className="text-xs font-bold">Sem foto</div></div></div>;
 }
 
 function DriverAvatar({ driver }: { driver: DriverCard }) {
@@ -3158,6 +3158,11 @@ export default function NurburgringCompanion() {
       }))
       .filter((group) => group.tabs.length > 0);
   }, [isAdmin]);
+  const mobileTabs = useMemo(() => visibleTabGroups.flatMap((group) => group.tabs), [visibleTabGroups]);
+  const mobileDockTabs = useMemo(() => {
+    const ids = ["agora", "racewatch", "live", "racecontrol", "carros"];
+    return ids.map((id) => tabs.find((tab) => tab.id === id)).filter((tab): tab is (typeof tabs)[number] => Boolean(tab));
+  }, []);
 
   const finalResultRows = finalSortedRows.length ? finalSortedRows : sortedQ;
   const finalWinner = finalResultRows[0];
@@ -3289,7 +3294,7 @@ export default function NurburgringCompanion() {
     setEventNote("");
   };
 
-  return <div className="min-h-screen bg-zinc-100 p-4 text-zinc-950 md:p-8"><div className="mx-auto max-w-7xl">
+  return <div className="min-h-screen bg-zinc-100 p-3 pb-24 text-zinc-950 sm:p-4 md:p-8 md:pb-8"><div className="mx-auto max-w-7xl">
     <header className="mb-5 overflow-hidden rounded-[2rem] border border-zinc-200 bg-white shadow-sm">
       <div className="grid gap-0 lg:grid-cols-[1.55fr_.45fr]">
         <div className="relative overflow-hidden bg-zinc-950 p-6 text-white md:p-8">
@@ -3302,7 +3307,7 @@ export default function NurburgringCompanion() {
             </div>
             <div className="max-w-4xl">
               <p className="text-xs font-black uppercase tracking-[0.3em] text-zinc-400">Painel de acompanhamento</p>
-              <h1 className="mt-2 text-4xl font-black tracking-tight md:text-6xl">Race Control de bolso</h1>
+              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl md:text-6xl">Race Control de bolso</h1>
               <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-300 md:text-base">Classificação ao vivo, Race Control, favoritos, checklist, cronômetros e grid completo em uma tela limpa para acompanhar a prova sem ficar caçando informação.</p>
             </div>
           </div>
@@ -3318,7 +3323,7 @@ export default function NurburgringCompanion() {
       </div>
     </header>
 
-    <section className="mb-5 rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-sm">
+    <section className="mb-5 hidden rounded-[2rem] border border-zinc-200 bg-white p-4 shadow-sm md:block">
       <div className="grid gap-3 xl:grid-cols-[1fr_.85fr_.9fr_.55fr_140px]">
         {visibleTabGroups.map((group) => (
           <div key={group.title} className="rounded-3xl bg-zinc-50 p-3">
@@ -3342,6 +3347,33 @@ export default function NurburgringCompanion() {
             <button onClick={() => { setShowAdminLogin((value) => !value); setAdminError(""); }} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-zinc-600 shadow-sm hover:bg-zinc-950 hover:text-white"><ShieldCheck size={16} /> Admin</button>
           )}
         </div>
+      </div>
+    </section>
+
+    <section className="sticky top-2 z-40 mb-5 rounded-3xl border border-zinc-200 bg-white/95 p-3 shadow-sm backdrop-blur md:hidden">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Navegação</div>
+        <Badge tone={liveStatus === "conectado" ? "green" : "gray"}>{liveStatus}</Badge>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {mobileTabs.map((t) => {
+          const Icon = t.icon;
+          const selected = active === t.id;
+          return (
+            <button key={t.id} onClick={() => setActive(t.id)} className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black shadow-sm transition ${selected ? "bg-red-700 text-white shadow-red-700/20" : "bg-zinc-100 text-zinc-700"}`}>
+              <Icon size={16} /> {t.label}
+            </button>
+          );
+        })}
+        {isAdmin ? (
+          <button onClick={logoutAdmin} className="flex shrink-0 items-center gap-2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-black text-white shadow-sm">
+            <LogOut size={16} /> Admin
+          </button>
+        ) : (
+          <button onClick={() => { setShowAdminLogin((value) => !value); setAdminError(""); }} className="flex shrink-0 items-center gap-2 rounded-2xl bg-zinc-100 px-4 py-3 text-sm font-black text-zinc-700 shadow-sm">
+            <ShieldCheck size={16} /> Admin
+          </button>
+        )}
       </div>
     </section>
 
@@ -3554,7 +3586,47 @@ export default function NurburgringCompanion() {
               </div>
               <Badge tone="blue">live timing + Race Control</Badge>
             </div>
-            <div className="overflow-x-auto">
+            <div className="grid gap-3 p-4 md:hidden">
+              {favoriteCockpitCars.map((c) => {
+                const live = liveByNum[c.num];
+                const group = raceGroupByNum[c.num];
+                const tone = group?.tone || "gray";
+
+                return (
+                  <div key={c.num + "-compact"} className={`rounded-2xl border p-4 ${getRaceCardClass(tone)}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-2xl font-black text-red-700">{c.num}</div>
+                        <div className="mt-1 text-sm font-black leading-5">{c.team}</div>
+                        <div className="mt-1 text-xs text-zinc-600">{c.car}</div>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <Badge tone="amber">Favorito</Badge>
+                        {live && <Badge tone="green">P{live.pos || "—"}</Badge>}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div className="rounded-2xl bg-white/70 p-3">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Tempo</div>
+                        <div className="mt-1 font-black">{live?.time || "sem tempo"}</div>
+                      </div>
+                      <div className="rounded-2xl bg-white/70 p-3">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Classe</div>
+                        <div className="mt-1 font-black">{c.cls || live?.cls || "—"}</div>
+                      </div>
+                    </div>
+                    {group ? (
+                      <button onClick={() => setActive("racecontrol")} className="mt-3 w-full rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-black text-white">
+                        {formatRaceMessageType(group.latest.type)} · ver RC
+                      </button>
+                    ) : (
+                      <div className="mt-3 rounded-2xl bg-white/70 px-4 py-3 text-sm font-bold text-zinc-500">Sem alerta de Race Control</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[860px] text-sm">
                 <thead className="bg-zinc-950 text-left text-white">
                   <tr>
@@ -3640,7 +3712,59 @@ export default function NurburgringCompanion() {
           <StatBox title="Favoritos no live" value={String(sortedQ.filter((r) => favorites[r.num]).length)} note="marcados com ★" tone="amber" />
         </div>
 
-        <CardBox className="overflow-hidden">
+        <div className="grid gap-3 md:hidden">
+          {filteredLiveRows.map((r, idx) => {
+            const group = raceGroupByNum[r.num];
+            const positionChange = Number(r.change || 0);
+            const hasPit = isPitState(r.pitState);
+            const classTone = getLiveClassTone(r.cls);
+            const isFavorite = !!favorites[r.num];
+            const rowClass = `${getLiveRowBaseClass(idx, group, isFavorite)} ${getLiveClassAccent(r.cls)} border-l-4`;
+
+            return (
+              <div key={r.num + "-mobile-" + idx} className={`${rowClass} rounded-2xl border border-zinc-200 p-4 shadow-sm`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-2xl font-black">P{r.pos || idx + 1}</span>
+                      {positionChange !== 0 && <Badge tone={positionChange > 0 ? "green" : "red"}>{positionChange > 0 ? "+" + positionChange : positionChange}</Badge>}
+                      {isFavorite && <Badge tone="amber">Fav</Badge>}
+                      {hasPit && <Badge tone="amber">PIT</Badge>}
+                    </div>
+                    <div className="mt-2 text-3xl font-black text-red-700">{r.num}</div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge tone={classTone}>{r.cls || "—"}</Badge>
+                    {group && <Badge tone={group.tone}>RC</Badge>}
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="font-black leading-5">{r.team || "—"}</div>
+                  <div className="mt-1 text-sm text-zinc-600">{r.car || "—"}</div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-2xl bg-white/70 p-3">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Tempo</div>
+                    <div className="mt-1 font-black">{r.time || "sem tempo"}</div>
+                    {r.lastLap && <div className="mt-1 text-xs font-bold text-zinc-500">Última {r.lastLap}</div>}
+                  </div>
+                  <div className="rounded-2xl bg-white/70 p-3">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Gap</div>
+                    <div className="mt-1 font-black">{idx === 0 ? "—" : gap(r.time, filteredLeaderTime)}</div>
+                    {r.pitStops && <div className="mt-1 text-xs font-bold text-zinc-500">{r.pitStops} pits</div>}
+                  </div>
+                </div>
+                {group && (
+                  <button onClick={() => setActive("racecontrol")} className="mt-3 w-full rounded-2xl bg-zinc-950 px-4 py-3 text-left text-sm font-black text-white">
+                    {formatRaceMessageType(group.latest.type)} · {truncateText(group.latest.translatedMessage, 86)}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <CardBox className="hidden overflow-hidden md:block">
           <div className="max-h-[720px] overflow-auto">
             <table className="w-full min-w-[1100px] text-sm">
               <thead className="sticky top-0 z-10 bg-zinc-950 text-left text-white">
@@ -4033,5 +4157,20 @@ export default function NurburgringCompanion() {
     {active === "timeline" && <CardBox className="p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Timeline da corrida</h2><p className="mt-1 text-sm text-zinc-600">Use para registrar chuva, pits, acidentes, Code 60, abandono e momentos legais.</p></div><Badge tone="red">{raceEvents.length} eventos</Badge></div><div className="grid gap-3 md:grid-cols-[1fr_1fr_160px_150px]"><Input value={eventTitle} onChange={setEventTitle} placeholder="Título do evento" /><Input value={eventNote} onChange={setEventNote} placeholder="Observação" /><select value={eventTag} onChange={(e) => setEventTag(e.target.value)} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold"><option>Observação</option><option>Incidente</option><option>Pit</option><option>Chuva</option><option>Code 60</option><option>Ultrapassagem</option><option>Abandono</option></select><button onClick={addRaceEvent} className="flex items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><Plus size={17} />Adicionar</button></div><div className="mt-5 space-y-3">{raceEvents.map((e) => <div key={e.id} className="grid gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-4 md:grid-cols-[100px_120px_1fr_40px]"><div className="font-black">{e.time}</div><div><Badge tone={e.tag === "Incidente" || e.tag === "Abandono" ? "red" : e.tag === "Chuva" || e.tag === "Code 60" ? "amber" : "gray"}>{e.tag}</Badge></div><div><div className="font-black">{e.title}</div>{e.note && <p className="mt-1 text-sm text-zinc-600">{e.note}</p>}</div><button onClick={() => setRaceEvents((old) => old.filter((x) => x.id !== e.id))} className="rounded-xl bg-white p-2 text-zinc-500 hover:text-red-700"><Trash2 size={17} /></button></div>)}</div></CardBox>}
 
     {active === "refs" && <CardBox className="p-5"><h2 className="text-2xl font-black">Referência de tempos</h2><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[800px] text-sm"><thead className="bg-zinc-900 text-left text-white"><tr><th className="p-3">Ano</th><th>Sessão</th><th>Mais rápido</th><th>Melhor tempo</th><th>P10</th><th>Janela</th><th>Nota</th></tr></thead><tbody>{references.map((r) => <tr key={r.year} className="border-b border-zinc-100"><td className="p-3 font-black">{r.year}</td><td>{r.session}</td><td>{r.p1}</td><td className="font-black text-red-700">{r.best}</td><td>{r.p10}</td><td>{r.window}</td><td>{r.note}</td></tr>)}</tbody></table></div></CardBox>}
+
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200 bg-white/95 px-2 py-2 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
+      <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+        {mobileDockTabs.map((t) => {
+          const Icon = t.icon;
+          const selected = active === t.id;
+          return (
+            <button key={t.id} onClick={() => setActive(t.id)} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-black ${selected ? "bg-red-700 text-white" : "text-zinc-600"}`}>
+              <Icon size={18} />
+              <span className="max-w-full truncate">{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   </div></div>;
 }
