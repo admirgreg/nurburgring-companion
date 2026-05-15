@@ -369,6 +369,1788 @@ const tabGroups = [
   }
 ];
 
+
+const rosterSeed: { carNum: string; team: string; car: string; drivers: string[] }[] = [
+  {
+    "carNum": "#1",
+    "team": "ROWE RACING",
+    "car": "BMW M4 GT3 EVO",
+    "drivers": [
+      "Augusto Farfus",
+      "Raffaele Marciello",
+      "Jordan Pepper",
+      "Kelvin van der Linde"
+    ]
+  },
+  {
+    "carNum": "#3",
+    "team": "Mercedes-AMG Team Verstappen Racing",
+    "car": "Mercedes-AMG GT3",
+    "drivers": [
+      "Max Verstappen",
+      "Lucas Auer",
+      "Jules Gounon",
+      "Daniel Juncadella"
+    ]
+  },
+  {
+    "carNum": "#7",
+    "team": "Franz Konrad",
+    "car": "Lamborghini Huracan GT3",
+    "drivers": [
+      "Patricija Stalidzane",
+      "Maximilian Paul",
+      "Christian Engelhart",
+      "Pavel Lefterov"
+    ]
+  },
+  {
+    "carNum": "#8",
+    "team": "JUTA Racing",
+    "car": "Audi R8 LMS GT3",
+    "drivers": [
+      "Alexey Veremenko",
+      "SELV",
+      "Elia Erhart"
+    ]
+  },
+  {
+    "carNum": "#11",
+    "team": "Schnitzelalm Racing GmbH",
+    "car": "Mercedes-AMG GT3",
+    "drivers": [
+      "Kenneth Heyer",
+      "James Fittjel Jay Mo Hartling",
+      "Philip Ellis"
+    ]
+  },
+  {
+    "carNum": "#16",
+    "team": "ROWE RACING",
+    "car": "BMW M4 GT3 EVO",
+    "drivers": [
+      "Christopher Haase",
+      "Alexander Sims",
+      "Ben Green"
+    ]
+  },
+  {
+    "carNum": "#17",
+    "team": "Dunlop Motorsport",
+    "car": "Audi R8 LMS GT3",
+    "drivers": [
+      "Julien Andlauer",
+      "Dorian Boccolacci",
+      "Nico Menzel",
+      "Alessio Picariello"
+    ]
+  },
+  {
+    "carNum": "#24",
+    "team": "Lionspeed GP",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Laurin Heinrich",
+      "Laurens Vanthoor",
+      "Ricardo Feller"
+    ]
+  },
+  {
+    "carNum": "#26",
+    "team": "PROsport Racing",
+    "car": "Mercedes-AMG GT3",
+    "drivers": [
+      "Adam Christodoulou",
+      "Christopher Lulham",
+      "Mikaël Grenier",
+      "Marek Böckmann"
+    ]
+  },
+  {
+    "carNum": "#34",
+    "team": "Walkenhorst Motorsport",
+    "car": "Aston Martin Vantage AMR GT3",
+    "drivers": [
+      "Christian Krognes",
+      "Mattia Drudi",
+      "Nicki Thiim",
+      "Felipe Fernandez Laser"
+    ]
+  },
+  {
+    "carNum": "#44",
+    "team": "Falken Motorsports",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Klaus Bachler",
+      "Tim Heinemann",
+      "Sven Müller",
+      "Morris Schuring"
+    ]
+  },
+  {
+    "carNum": "#45",
+    "team": "REALIZE KONDO RACING",
+    "car": "Ferrari 296 GT3",
+    "drivers": [
+      "David Perel",
+      "Dennis Marschall",
+      "Thierry Vermeulen",
+      "Thomas Neubauer"
+    ]
+  },
+  {
+    "carNum": "#47",
+    "team": "KCMG",
+    "car": "Mercedes-AMG GT3",
+    "drivers": [
+      "Nirei Fukuzumi",
+      "Naoya Gamou",
+      "Jesse Krohn",
+      "David Pittard"
+    ]
+  },
+  {
+    "carNum": "#54",
+    "team": "Dinamic GT",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Bastian Buss",
+      "Michael Klitgaard Christensen",
+      "Joel Sturm",
+      "Loek Hartog"
+    ]
+  },
+  {
+    "carNum": "#55",
+    "team": "Dinamic GT",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Michele Beretta",
+      "Alessandro Ghiretti",
+      "Joel Sturm",
+      "Loek Hartog"
+    ]
+  },
+  {
+    "carNum": "#64",
+    "team": "HRT Ford Racing",
+    "car": "Ford Mustang GT3",
+    "drivers": [
+      "Arjun Maini",
+      "Fabio Scherer",
+      "David Schumacher",
+      "Frank Stippler"
+    ]
+  },
+  {
+    "carNum": "#65",
+    "team": "HRT Ford Racing",
+    "car": "Ford Mustang GT3",
+    "drivers": [
+      "Hubert Haupt",
+      "Vincent Kolb",
+      "David Schumacher",
+      "Colin Caresani"
+    ]
+  },
+  {
+    "carNum": "#67",
+    "team": "HRT Ford Racing",
+    "car": "Ford Mustang GT3 EVO",
+    "drivers": [
+      "Dennis Olsen",
+      "Christopher Mies",
+      "Frederic Vervisch",
+      "Frank Stippler"
+    ]
+  },
+  {
+    "carNum": "#69",
+    "team": "Doerr Motorsport",
+    "car": "McLaren 720S GT3",
+    "drivers": [
+      "Timo Glock",
+      "Timo Scheider",
+      "Ben Doerr",
+      "Marvin Kirchhöfer"
+    ]
+  },
+  {
+    "carNum": "#77",
+    "team": "Schubert Motorsport",
+    "car": "BMW M4 GT3 EVO",
+    "drivers": [
+      "Marco Wittmann",
+      "Philipp Eng",
+      "Charles Weerts",
+      "Robin Frijns"
+    ]
+  },
+  {
+    "carNum": "#80",
+    "team": "Mercedes-AMG Team RAVENOL",
+    "car": "Mercedes-AMG GT3",
+    "drivers": [
+      "Maro Engel",
+      "Luca Stolz",
+      "Fabian Schiller",
+      "Maxime Martin"
+    ]
+  },
+  {
+    "carNum": "#84",
+    "team": "Red Bull Team ABT",
+    "car": "Lamborghini Huracan GT3 EVO2",
+    "drivers": [
+      "Luca Engstler",
+      "Mirko Bortolotti",
+      "Patric Niederhauser"
+    ]
+  },
+  {
+    "carNum": "#86",
+    "team": "High Class Racing",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Kerong Li",
+      "Ander Fjordbach",
+      "Hongli Ye",
+      "Harry King"
+    ]
+  },
+  {
+    "carNum": "#99",
+    "team": "ROWE RACING",
+    "car": "BMW M4 GT3 EVO",
+    "drivers": [
+      "Dan Harper",
+      "Max Hesse",
+      "Sheldon van der Linde",
+      "Dries Vanthoor"
+    ]
+  },
+  {
+    "carNum": "#911",
+    "team": "Manthey Racing",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Kevin Estre",
+      "Ayhancan Güven",
+      "Thomas Preining",
+      "Matt Campbell"
+    ]
+  },
+  {
+    "carNum": "#4",
+    "team": "Goroyan RT by Car Collection",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Artur Goroyan",
+      "Oleg Kivtka",
+      "Nathanael Berthon",
+      "Alex Fontana"
+    ]
+  },
+  {
+    "carNum": "#18",
+    "team": "Lionspeed GP",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Kyle Tilley",
+      "Jake Hill",
+      "Patrick Kolb",
+      "Max Hofer"
+    ]
+  },
+  {
+    "carNum": "#30",
+    "team": "Hankook Competition",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Jongkyum Kim",
+      "Roelof Bruins",
+      "Steven Cho",
+      "Marco Seefried"
+    ]
+  },
+  {
+    "carNum": "#32",
+    "team": "Toyo Tires with Ring Racing",
+    "car": "Mercedes-AMG GT3",
+    "drivers": [
+      "Yuichi Nakayama",
+      "Andreas Gülden",
+      "Tim Sandtler"
+    ]
+  },
+  {
+    "carNum": "#33",
+    "team": "KKrämer Racing",
+    "car": "Audi R8 LMS GT3 evo II",
+    "drivers": [
+      "Tobias Vazquez-Garcia",
+      "Fidel Leib",
+      "Michele di Martino",
+      "Christopher Bruck"
+    ]
+  },
+  {
+    "carNum": "#35",
+    "team": "Walkenhorst Motorsport",
+    "car": "Aston Martin Vantage AMR GT3",
+    "drivers": [
+      "Felipe Fernandez Laser",
+      "Mateo Villagómez",
+      "Dennis Fetzer",
+      "Stefan Aust"
+    ]
+  },
+  {
+    "carNum": "#39",
+    "team": "Walkenhorst Motorsport",
+    "car": "Aston Martin Vantage AMR GT3",
+    "drivers": [
+      "Henry Walkenhorst",
+      "Anders Buchardt",
+      "Nico Hantke",
+      "Mex Jansen"
+    ]
+  },
+  {
+    "carNum": "#48",
+    "team": "BLACK FALCON LOSCH",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Daan Arrow",
+      "Patrick Assenheimer",
+      "Tobias Müller",
+      "Dylan Pereira"
+    ]
+  },
+  {
+    "carNum": "#71",
+    "team": "JUTA Racing",
+    "car": "Audi R8 LMS GT3 evo II",
+    "drivers": [
+      "Otto Blank",
+      "Pierre Kaffer",
+      "Björn Großmann",
+      "Christer Jöns"
+    ]
+  },
+  {
+    "carNum": "#123",
+    "team": "Mühlner Motorsport",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Martin Rump",
+      "Ben Bünnagel",
+      "Alexander Brundle"
+    ]
+  },
+  {
+    "carNum": "#130",
+    "team": "Red Bull Team ABT",
+    "car": "Lamborghini Huracan GT3 EVO2",
+    "drivers": [
+      "Marco Mapelli",
+      "Nicky Catsburg",
+      "Nicholas Yelloly"
+    ]
+  },
+  {
+    "carNum": "#5",
+    "team": "BLACK FALCON Team EAE",
+    "car": "Porsche 911 GT3 R (992)",
+    "drivers": [
+      "Mustafa Mehmet Kaya",
+      "Thomas Kiefer",
+      "Gabriele Piana",
+      "Mike Stursberg"
+    ]
+  },
+  {
+    "carNum": "#36",
+    "team": "Saugmotoren Motorsport",
+    "car": "BMW Z4 GT3",
+    "drivers": [
+      "Julian Reeh",
+      "Valentin Lachenmayer",
+      "Henry Walkenhorst",
+      "Christian Scherer"
+    ]
+  },
+  {
+    "carNum": "#37",
+    "team": "PROsport Racing",
+    "car": "Aston Martin Vantage GT3",
+    "drivers": [
+      "Guido Dumarey",
+      "Tobias Wahl",
+      "Markus Lönnroth",
+      "Christian Konnerth"
+    ]
+  },
+  {
+    "carNum": "#40",
+    "team": "W.I.S Racing Team",
+    "car": "BMW Z4 GT3",
+    "drivers": [
+      "Peter Posavac",
+      "Michael Funke",
+      "Volker Strycek",
+      "Juan Carlos Carmona Chavez"
+    ]
+  },
+  {
+    "carNum": "#786",
+    "team": "Renazzo Motorsport",
+    "car": "Lamborghini Huracan GT3 EVO2",
+    "drivers": [
+      "Sak Nana",
+      "Christoph Breuer",
+      "Dieter Schmidtmann",
+      "Thomas Mutsch"
+    ]
+  },
+  {
+    "carNum": "#90",
+    "team": "Teichmann Racing",
+    "car": "Toyota GR Supra GT4 EVO2",
+    "drivers": [
+      "Hugo Schwarze",
+      "Lucas Cartelle",
+      "Javier Sagrera",
+      "Edgar Pierre"
+    ]
+  },
+  {
+    "carNum": "#145",
+    "team": "Riller & Schnauck",
+    "car": "BMW M4 GT4 EVO",
+    "drivers": [
+      "Peter Cate",
+      "Joshua Bednarski",
+      "Tom Schütze",
+      "Jeroen Bleekemolen"
+    ]
+  },
+  {
+    "carNum": "#164",
+    "team": "W&S Motorsport",
+    "car": "Porsche 718 Cayman GT4 RS CS",
+    "drivers": [
+      "Stephan Brodmerkel",
+      "Hendrik Still",
+      "Jürgen Vöhringer",
+      "Constantin Schöll"
+    ]
+  },
+  {
+    "carNum": "#176",
+    "team": "PROsport Racing",
+    "car": "Mercedes-AMG GT4",
+    "drivers": [
+      "Guilherme de Oliveira",
+      "Yannik Himmels",
+      "Lluc Ibañez",
+      "Jörg Viebahn"
+    ]
+  },
+  {
+    "carNum": "#177",
+    "team": "AV Racing by BLACK FALCON",
+    "car": "BMW M4 GT4 EVO",
+    "drivers": [
+      "Malcolm Harrison",
+      "Sergiu Nicolae",
+      "Mark Smith",
+      "Alexandru Vasilescu"
+    ]
+  },
+  {
+    "carNum": "#187",
+    "team": "FK Performance Motorsport",
+    "car": "BMW M4 GT4",
+    "drivers": [
+      "Luca Link",
+      "Nick Wüstenhagen",
+      "Leyton Fourie",
+      "Moritz Wiskirchen"
+    ]
+  },
+  {
+    "carNum": "#888",
+    "team": "Hofor Racing",
+    "car": "BMW M4 GT4 EVO",
+    "drivers": [
+      "Max Partl",
+      "Michael Schrey",
+      "Philip Wiskirchen",
+      "Thorsten Wolter"
+    ]
+  },
+  {
+    "carNum": "#169",
+    "team": "Doerr Motorsport",
+    "car": "Aston Martin Vantage GT4",
+    "drivers": [
+      "Peter Sander",
+      "Heiko Hahn",
+      "Roland Waschkau",
+      "Philippe Charlaix"
+    ]
+  },
+  {
+    "carNum": "#171",
+    "team": "BSL Racing Team",
+    "car": "Porsche 718 Cayman GT4 RS CS",
+    "drivers": [
+      "Alexander Walker",
+      "Eric Ullström",
+      "Philipp Hagnauer",
+      "Arno Klasen"
+    ]
+  },
+  {
+    "carNum": "#175",
+    "team": "PROsport Racing",
+    "car": "Mercedes-AMG GT4",
+    "drivers": [
+      "Jacques Derenne",
+      "Carsten Kautz",
+      "Gustav Bard",
+      "Marcos Vazquez"
+    ]
+  },
+  {
+    "carNum": "#180",
+    "team": "AV Racing by BLACK FALCON",
+    "car": "BMW M4 GT4 EVO",
+    "drivers": [
+      "Judson Holt",
+      "Dave Ogburn",
+      "Denny Stripling",
+      "Charles Russell Turner"
+    ]
+  },
+  {
+    "carNum": "#189",
+    "team": "Hofor Racing by Bonk Motorsport",
+    "car": "BMW M4 GT4 EVO",
+    "drivers": [
+      "Matin Kroll",
+      "Michael Bonk",
+      "Jörg Weidinger",
+      "Ranko Mjatovic"
+    ]
+  },
+  {
+    "carNum": "#170",
+    "team": "Toyo Tires with Ring Racing",
+    "car": "Toyota GR Supra GT4 EVO2",
+    "drivers": [
+      "Giuliano Alesi",
+      "Kazuto Kotaka",
+      "Miki Koyama",
+      "Shunji Okumoto"
+    ]
+  },
+  {
+    "carNum": "#59",
+    "team": "Doerr Motorsport",
+    "car": "McLaren Artura Trophy Evo",
+    "drivers": [
+      "Sven Schadler",
+      "Frank Weishar",
+      "Guido Naumann",
+      "Phil Dorr"
+    ]
+  },
+  {
+    "carNum": "#82",
+    "team": "Equipe não informada",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Marco Vitonelli",
+      "Michael Schroder",
+      "Jacek Pydys",
+      "Sebastian Brandl"
+    ]
+  },
+  {
+    "carNum": "#91",
+    "team": "Reiter Engineering",
+    "car": "Porsche 911 GT3 Cup (991)",
+    "drivers": [
+      "Lukas Ertl",
+      "Maximilian Ertl",
+      "Stefan Ertl",
+      "Matthias Benndorf"
+    ]
+  },
+  {
+    "carNum": "#420",
+    "team": "Four Motors Bioconcept-Car",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Marc Schöni",
+      "Oliver Sprungmann",
+      "Henning Cramer",
+      "Georg Kiefer"
+    ]
+  },
+  {
+    "carNum": "#50",
+    "team": "Max Kruse Racing",
+    "car": "VW Golf GTI Clubsport",
+    "drivers": [
+      "Benjamin Leuchter",
+      "Johan Kristoffersen",
+      "Heiko Hammel",
+      "Nicholas Otto"
+    ]
+  },
+  {
+    "carNum": "#76",
+    "team": "Max Kruse Racing",
+    "car": "VW Golf GTI Clubsport",
+    "drivers": [
+      "Timo Hochwind",
+      "Nicholas Otto",
+      "Fabian Vettel",
+      "Jonathan Mogotsi"
+    ]
+  },
+  {
+    "carNum": "#88",
+    "team": "Subaru TECNICA INTERNATIONAL",
+    "car": "Subaru WRX",
+    "drivers": [
+      "Carlo van Dam",
+      "Kota Sasaki",
+      "Takuto Iguchi",
+      "Rintaro Kubo"
+    ]
+  },
+  {
+    "carNum": "#302",
+    "team": "Hyundai Motorsport N",
+    "car": "Hyundai Elantra N1 RP",
+    "drivers": [
+      "Manuel Lauck",
+      "Youngchan Kim",
+      "Mark Wallenwein",
+      "Mikel Azcona"
+    ]
+  },
+  {
+    "carNum": "#303",
+    "team": "Hyundai Motorsport N",
+    "car": "Hyundai Elantra N1 RP",
+    "drivers": [
+      "Gyumin Kim",
+      "Mark Wallenwein",
+      "Woojin Shin",
+      "Carlos Jose Sepulveda Irizarry"
+    ]
+  },
+  {
+    "carNum": "#152",
+    "team": "Oepen Motorsport",
+    "car": "BMW 325i",
+    "drivers": [
+      "Ingo Oepen",
+      "Christian Koger",
+      "Henrik Launhardt"
+    ]
+  },
+  {
+    "carNum": "#10",
+    "team": "Max Kruse Racing",
+    "car": "VW Golf GTI Clubsport",
+    "drivers": [
+      "Matthias Wasel",
+      "Christoph Lenz",
+      "Max Kruse",
+      "Jens Dralle"
+    ]
+  },
+  {
+    "carNum": "#300",
+    "team": "Ollis Garage Racing",
+    "car": "Dacia Logan",
+    "drivers": [
+      "Oliver Kriese",
+      "Christian Geilfus",
+      "Robert Neumann",
+      "Alexander Becker"
+    ]
+  },
+  {
+    "carNum": "#317",
+    "team": "2R Racing",
+    "car": "Audi TT RS",
+    "drivers": [
+      "Wolfgang Haugg",
+      "Roland Waschkau",
+      "Thorsten Jung",
+      "Dirk Vleugels"
+    ]
+  },
+  {
+    "carNum": "#321",
+    "team": "Sharky Racing",
+    "car": "VW Golf GTI TCR",
+    "drivers": [
+      "Finn Mache",
+      "Danny Brink",
+      "Moritz Rosenbach",
+      "Joris Primke"
+    ]
+  },
+  {
+    "carNum": "#800",
+    "team": "asBest Racing",
+    "car": "VW Golf GTI",
+    "drivers": [
+      "Manuel Dormagen",
+      "Sven Oepen",
+      "Thomas Ardelt, Tim Lukas Muller"
+    ]
+  },
+  {
+    "carNum": "#808",
+    "team": "asBest Racing",
+    "car": "Cupra TCR DSG",
+    "drivers": [
+      "Junichi Umemoto",
+      "Son Geon",
+      "Rafal Gieras, Samuel Hsieh"
+    ]
+  },
+  {
+    "carNum": "#821",
+    "team": "Sharky Racing",
+    "car": "Audi RS3 LMS DSG",
+    "drivers": [
+      "Mats Heidler",
+      "Sascha Siegert, Stephen Epp, Alexander Weber"
+    ]
+  },
+  {
+    "carNum": "#277",
+    "team": "RAVENOL Motorsport by MDM Racing",
+    "car": "BMW 318ti",
+    "drivers": [
+      "Marc David Müller",
+      "Henrik Seibel",
+      "Leo Geisler, Michael Harris"
+    ]
+  },
+  {
+    "carNum": "#109",
+    "team": "TOYOTA GAZOO ROOKIE Racing",
+    "car": "Toyota GR Yaris",
+    "drivers": [
+      "Morizo",
+      "Daisuke Toyoda",
+      "Hiroaki Ishiura",
+      "Kazuya Oshima"
+    ]
+  },
+  {
+    "carNum": "#110",
+    "team": "TOYOTA GAZOO ROOKIE Racing",
+    "car": "Toyota GR Yaris",
+    "drivers": [
+      "Morizo",
+      "Daisuke Toyoda",
+      "Masahiro Sasaki",
+      "Kazuya Oshima"
+    ]
+  },
+  {
+    "carNum": "#380",
+    "team": "BITTER",
+    "car": "Opel Corsa GS Line",
+    "drivers": [
+      "Volker Strycek",
+      "Christian Schäffer",
+      "Björn Morhin",
+      "Jan Soumagne"
+    ]
+  },
+  {
+    "carNum": "#13",
+    "team": "Cargraphic by Kurt Ecke Motorsport",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Bernd Albrecht",
+      "Kurt Ecke",
+      "Andreas Sczepansky",
+      "Mike Jager"
+    ]
+  },
+  {
+    "carNum": "#95",
+    "team": "Sante Royal Racing",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Stefan Kiefer",
+      "Marius Kiefer",
+      "David Kiefer",
+      "Luca Rettenbacher"
+    ]
+  },
+  {
+    "carNum": "#900",
+    "team": "BLACK FALCON Zimmermann",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Alexander Hardt",
+      "Benjamin Hites",
+      "Benjamin Koslowski",
+      "Paul Meijer"
+    ]
+  },
+  {
+    "carNum": "#902",
+    "team": "BLACK FALCON LIQUI MOLY",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Ryan Harrison",
+      "Noah Nagelsdiek",
+      "Raphael Rennhofer",
+      "Leon Wassertheurer"
+    ]
+  },
+  {
+    "carNum": "#918",
+    "team": "Mühlner Motorsport",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Tim Scheerbarth",
+      "Nick Salewsky",
+      "Michael Rebhan",
+      "Michelle Gatting"
+    ]
+  },
+  {
+    "carNum": "#919",
+    "team": "Clickversicherung.de",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Robin Chrzanowski",
+      "Kersten Jodexnis",
+      "Richard-Sven Jodexnis",
+      "Peter Scharmach"
+    ]
+  },
+  {
+    "carNum": "#925",
+    "team": "Huber Motorsport",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Jon Miller",
+      "Jaden Lander",
+      "Jake Walker",
+      "Hans Wehrmann"
+    ]
+  },
+  {
+    "carNum": "#777",
+    "team": "RPM Racing",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Tracy Krohn",
+      "Nic Jönsson",
+      "Philip Hamprecht",
+      "Patrick Huisman"
+    ]
+  },
+  {
+    "carNum": "#904",
+    "team": "Mühlner Motorsport",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Antal Zsigo",
+      "Adam Benko",
+      "Csaba Walter",
+      "Moritz Kranz"
+    ]
+  },
+  {
+    "carNum": "#908",
+    "team": "Hofor Racing",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Michael Kroll",
+      "Torsten Kratz",
+      "Alex Prinz",
+      "Thomas Mühlenz"
+    ]
+  },
+  {
+    "carNum": "#909",
+    "team": "KKrämer Racing",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Peter Sander",
+      "Karsten Krämer",
+      "Leo Messenger",
+      "Michelangelo Comazzi"
+    ]
+  },
+  {
+    "carNum": "#941",
+    "team": "Adrenalin Motorsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Adrian Rziczny",
+      "Mark van der Snel",
+      "Max van der Snel",
+      "Alexander Kroker"
+    ]
+  },
+  {
+    "carNum": "#959",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Patrik Grütter",
+      "Fabio Grosse",
+      "Heiko Eichenberg",
+      "Harley Hughton"
+    ]
+  },
+  {
+    "carNum": "#961",
+    "team": "W&S Motorsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Marius Rauer",
+      "Michal Makes",
+      "Zhen Dong Zhang",
+      "Chao Lu"
+    ]
+  },
+  {
+    "carNum": "#962",
+    "team": "W&S Motorsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Moritz Oberheim",
+      "Philip Miemois",
+      "Lorenz Stegmann",
+      "Niclas Wiedmann"
+    ]
+  },
+  {
+    "carNum": "#966",
+    "team": "asBest Racing",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Jan-Niklas Stieler",
+      "Moritz Oehme",
+      "Leonhard Oehme",
+      "Kasparas Vingils"
+    ]
+  },
+  {
+    "carNum": "#967",
+    "team": "Breakell Racing",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Martin Rich",
+      "Karim Sekkat",
+      "Pippa Man",
+      "Josh Hislop"
+    ]
+  },
+  {
+    "carNum": "#971",
+    "team": "Speedworxx Automotive",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Franz Linden",
+      "Oskar Sandberg",
+      "Alexander Fielenbach",
+      "Erik Braun"
+    ]
+  },
+  {
+    "carNum": "#979",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Maximilian",
+      "Damon Surzyshyn",
+      "Seth Brown",
+      "Christian Coen"
+    ]
+  },
+  {
+    "carNum": "#999",
+    "team": "Mühlner Motorsport",
+    "car": "Porsche 718 Cayman GT4 RS",
+    "drivers": [
+      "Maxwell Polzler",
+      "Christopher Rink",
+      "Kai Riemer",
+      "Matthias Beckwemert"
+    ]
+  },
+  {
+    "carNum": "#939",
+    "team": "BLACK FALCON Zimmermann",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Alezander Kroker",
+      "Anton Ruf",
+      "Axel Sartingen",
+      "Nils Schwenk"
+    ]
+  },
+  {
+    "carNum": "#945",
+    "team": "Renazzo Motorsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Markus Nölken",
+      "Daniel Nölken, Alexander Meixner",
+      "Kouichi Okumura"
+    ]
+  },
+  {
+    "carNum": "#949",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Aaron Wenisch",
+      "Tommy Graberg",
+      "Akshay Gupta",
+      "Björn Simon"
+    ]
+  },
+  {
+    "carNum": "#952",
+    "team": "Smyrlis Racing",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Christian Kraus",
+      "Peder Saltvedt",
+      "Alex Koch",
+      "Henry Lindloff"
+    ]
+  },
+  {
+    "carNum": "#969",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Kurt Strube",
+      "Guy Stewart",
+      "Bernhard Wagner",
+      "Josh Jacobs"
+    ]
+  },
+  {
+    "carNum": "#977",
+    "team": "BSL Racing Team",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Marcel Zimmermann",
+      "Marc Arn",
+      "Philipp Frommenwiler",
+      "Christoph Ruhrmann"
+    ]
+  },
+  {
+    "carNum": "#978",
+    "team": "KKrämer Racing",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Olaf Baunack",
+      "Marco Lamsouguer",
+      "Mario Handrick",
+      "Michael Monch"
+    ]
+  },
+  {
+    "carNum": "#982",
+    "team": "W&S Motorsport",
+    "car": "Porsche 718 Cayman GT4",
+    "drivers": [
+      "Christoph Krombach",
+      "Oliver Kunz",
+      "Axel Duffner",
+      "Leo-Livius Arne Weber"
+    ]
+  },
+  {
+    "carNum": "#89",
+    "team": "Equipe não informada",
+    "car": "VW Golf 7 GTi",
+    "drivers": [
+      "Marco Knappmeier",
+      "Malk Knappmeier",
+      "Dirk Groneck"
+    ]
+  },
+  {
+    "carNum": "#577",
+    "team": "asBest Racing",
+    "car": "Cupra Leon Competición",
+    "drivers": [
+      "Lutz Obermann",
+      "Dennis Leissing",
+      "Max Rosam",
+      "Mark Trompeter"
+    ]
+  },
+  {
+    "carNum": "#776",
+    "team": "Sharky Racing",
+    "car": "Audi RS3 LMS SEQ",
+    "drivers": [
+      "Ivars Vallers",
+      "Gian Maria Gabbiani",
+      "Mikaela Ahlin-Kottulinsky",
+      "Philipp Eis"
+    ]
+  },
+  {
+    "carNum": "#830",
+    "team": "Hyundai Motorsport N",
+    "car": "Hyundai Elantra N TCR",
+    "drivers": [
+      "Marc Basseng",
+      "Manuel Lauck",
+      "Nico Bastian",
+      "Mikel Azcona"
+    ]
+  },
+  {
+    "carNum": "#100",
+    "team": "EiFelkind Racing",
+    "car": "BMW 325i",
+    "drivers": [
+      "Markus Fischer",
+      "Oliver Frisse",
+      "Christopher Gruber",
+      "Henning Hausmeier"
+    ]
+  },
+  {
+    "carNum": "#101",
+    "team": "EiFelkind Racing",
+    "car": "BMW 325i",
+    "drivers": [
+      "Tim Schwolow",
+      "Nils Renken",
+      "Marco Schmitz"
+    ]
+  },
+  {
+    "carNum": "#108",
+    "team": "asBest Racing",
+    "car": "BMW 325i",
+    "drivers": [
+      "Alex Schneider",
+      "Marco Grill",
+      "Sarah Ganser",
+      "Richard Bather"
+    ]
+  },
+  {
+    "carNum": "#112",
+    "team": "JS Competition",
+    "car": "BMW 325i",
+    "drivers": [
+      "Eugen Becker",
+      "Jonas Spölgen",
+      "Flurin Zimmermann",
+      "Bernd Kupper"
+    ]
+  },
+  {
+    "carNum": "#870",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW M2 Racing G87",
+    "drivers": [
+      "Ryusho Konishi",
+      "Yunfeng Zou",
+      "Alesia Kreutzpointer",
+      "Jacqueline Kreutzpointner"
+    ]
+  },
+  {
+    "carNum": "#878",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "BMW M2 Racing G87",
+    "drivers": [
+      "Maximilian Hill",
+      "Tim Peeters",
+      "Max Schlichenmeier",
+      "Darian Donkel"
+    ]
+  },
+  {
+    "carNum": "#898",
+    "team": "Walkenhorst Motorsport",
+    "car": "BMW M2 Racing G87",
+    "drivers": [
+      "Bennet Ehrl",
+      "Tazio Ottis",
+      "Maxim Felix Dacher",
+      "Takayuki Kinoshita"
+    ]
+  },
+  {
+    "carNum": "#899",
+    "team": "W&S Motorsport",
+    "car": "BMW M2 CS Racing",
+    "drivers": [
+      "Yanis Anhorn",
+      "Frank Anhorn",
+      "Max Lamesch",
+      "John Marchal"
+    ]
+  },
+  {
+    "carNum": "#195",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW M240i Racing Cup",
+    "drivers": [
+      "Moran Gott",
+      "Hagay Farran",
+      "Filip Hoenjet"
+    ]
+  },
+  {
+    "carNum": "#650",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW M240i",
+    "drivers": [
+      "Sven Markert",
+      "Benjamin Albers",
+      "Santiago Baztarrica",
+      "Yannick Fübrich"
+    ]
+  },
+  {
+    "carNum": "#651",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW M240i",
+    "drivers": [
+      "Kevin Wambach",
+      "Nico Silva",
+      "Johnny Huang",
+      "Ke Shao"
+    ]
+  },
+  {
+    "carNum": "#652",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW M240i",
+    "drivers": [
+      "Aldrin Opran",
+      "Grégoire Boutonnet",
+      "Laurent Laparra",
+      "Oleg Kravets"
+    ]
+  },
+  {
+    "carNum": "#653",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW M240i",
+    "drivers": [
+      "Farquini",
+      "Ben Pitch",
+      "Axel Soyez",
+      "Edoardo Bugane"
+    ]
+  },
+  {
+    "carNum": "#658",
+    "team": "JJ Motorsport",
+    "car": "BMW M240i",
+    "drivers": [
+      "Hakan Sari",
+      "Recep Sari",
+      "Ersin Yücesan"
+    ]
+  },
+  {
+    "carNum": "#665",
+    "team": "WS Racing",
+    "car": "BMW M240i",
+    "drivers": [
+      "Jan Ullrich",
+      "Ulf Steffens",
+      "John Von der Sanden",
+      "Jannik Reinhard"
+    ]
+  },
+  {
+    "carNum": "#667",
+    "team": "Breakell Racing",
+    "car": "BMW M240i",
+    "drivers": [
+      "Andreas Simon",
+      "Aidan Mulready",
+      "James Breakell",
+      "Alvaro Fontes"
+    ]
+  },
+  {
+    "carNum": "#669",
+    "team": "Keeevin Motorsport",
+    "car": "BMW M240i",
+    "drivers": [
+      "Riccardo Petrolo",
+      "Maximilian Kurz",
+      "Zeynel Babacan"
+    ]
+  },
+  {
+    "carNum": "#670",
+    "team": "WS Racing",
+    "car": "BMW M240i",
+    "drivers": [
+      "Adrien Paviot",
+      "Valentin Belgy",
+      "Michael Brautigam",
+      "Dennis Garbe"
+    ]
+  },
+  {
+    "carNum": "#677",
+    "team": "asBest Racing",
+    "car": "BMW M240i",
+    "drivers": [
+      "Marco Grilli",
+      "Thomas Alpiger",
+      "Michael Neuhauser",
+      "Sebastian Tauber"
+    ]
+  },
+  {
+    "carNum": "#19",
+    "team": "Max Kruse Racing",
+    "car": "Audi R8 LMS GT3 evo II",
+    "drivers": [
+      "Jan Jaap van Roon",
+      "Tom Coronel",
+      "Christian Kohlhaas",
+      "Duncan Huismann"
+    ]
+  },
+  {
+    "carNum": "#75",
+    "team": "Max Kruse Racing",
+    "car": "Audi R8 LMS GT3 evo II",
+    "drivers": [
+      "Dominik Fugel",
+      "Marcel Fugel",
+      "Benjamin Leuchter",
+      "Tom Coronel"
+    ]
+  },
+  {
+    "carNum": "#146",
+    "team": "GITI Tire Motorsport by WS Racing",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Carrie Schreiner",
+      "Janina Schall",
+      "Michelle Halder",
+      "Fabienne Wohlwend"
+    ]
+  },
+  {
+    "carNum": "#320",
+    "team": "Four Motors Bioconcept-Car",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Smudo",
+      "Henrik Bollerslev",
+      "Marco van Ramshorst",
+      "Nano Lopez"
+    ]
+  },
+  {
+    "carNum": "#632",
+    "team": "BLACK FALCON FANATEC",
+    "car": "Porsche 911 GT3 Cup (992)",
+    "drivers": [
+      "Jimmy Broadbent",
+      "Steve Brown",
+      "Misha Charoudin",
+      "Manuel Metzger"
+    ]
+  },
+  {
+    "carNum": "#440",
+    "team": "QTQ Raceperformance",
+    "car": "Porsche Cayman CM12",
+    "drivers": [
+      "Mirco Böhmisch",
+      "Florian Ebener",
+      "Andreas Müller",
+      "Florian Quante"
+    ]
+  },
+  {
+    "carNum": "#444",
+    "team": "Adrenalin Motorsport",
+    "car": "Porsche Cayman CM12",
+    "drivers": [
+      "Ulrich Korn",
+      "Tobias Korn",
+      "Daniel Korn",
+      "Serghei Levlev"
+    ]
+  },
+  {
+    "carNum": "#445",
+    "team": "rent2Drive MEHRTEC",
+    "car": "Porsche Cayman CM12",
+    "drivers": [
+      "Georg Arbinger",
+      "Joel Le Bihan",
+      "Philip Ade",
+      "Jan Karsten Welker"
+    ]
+  },
+  {
+    "carNum": "#454",
+    "team": "Pure Racing",
+    "car": "Porsche Cayman CM12",
+    "drivers": [
+      "John Lee Schambony",
+      "Jan Hendrik Heimbach",
+      "Andreas Hansen",
+      "Peter Baumann"
+    ]
+  },
+  {
+    "carNum": "#455",
+    "team": "Pure Racing",
+    "car": "Porsche Cayman CM12",
+    "drivers": [
+      "Peter Baumann",
+      "Matthias Trinius",
+      "Thorsten Held",
+      "John Lee Schambony"
+    ]
+  },
+  {
+    "carNum": "#396",
+    "team": "Adrenalin Motorsport",
+    "car": "Porsche Cayman S",
+    "drivers": [
+      "Klaus Faßbender",
+      "Christian Büllesbach",
+      "Andreas Schettler",
+      "Carlos Arimon"
+    ]
+  },
+  {
+    "carNum": "#410",
+    "team": "rent2Drive MEHRTEC",
+    "car": "Porsche Cayman GTS",
+    "drivers": [
+      "Stefano Croci",
+      "Jérôme Larbi",
+      "David Ackermann",
+      "Matiss Mezaks"
+    ]
+  },
+  {
+    "carNum": "#415",
+    "team": "Köppen Motorsport",
+    "car": "Porsche 911 Carrera",
+    "drivers": [
+      "Alexander Köppen",
+      "Sebastian Rings",
+      "Bastian Arend",
+      "Maximilian Arnold"
+    ]
+  },
+  {
+    "carNum": "#418",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "Porsche Cayman S",
+    "drivers": [
+      "Xavier Lamadrid",
+      "Cesar Mendieta",
+      "Luis Ramirez",
+      "Tabea Junger"
+    ]
+  },
+  {
+    "carNum": "#448",
+    "team": "OVERTAKERACING",
+    "car": "Porsche Cayman S",
+    "drivers": [
+      "Christian Weber",
+      "Christian Knötschke",
+      "Alexander Müller",
+      "Torsten Krey"
+    ]
+  },
+  {
+    "carNum": "#471",
+    "team": "Jung Motorsport",
+    "car": "Cupra Leon KL",
+    "drivers": [
+      "Michael Eichhorn",
+      "Tony Roma",
+      "Andreas Winterwerber"
+    ]
+  },
+  {
+    "carNum": "#472",
+    "team": "Jung Motorsport",
+    "car": "Cupra Leon KL",
+    "drivers": [
+      "Lars Füting",
+      "Marc Etzkorn",
+      "Thanathip Thanalapanan",
+      "Marcel Müller"
+    ]
+  },
+  {
+    "carNum": "#474",
+    "team": "Time Attack Paderborn",
+    "car": "VW Golf",
+    "drivers": [
+      "Boris Hrubesch",
+      "Fritz Hebig",
+      "Fabian Tillmann",
+      "Michael Wolpertinger"
+    ]
+  },
+  {
+    "carNum": "#477",
+    "team": "asBest Racing",
+    "car": "VW Scirocco R",
+    "drivers": [
+      "Bastian Beck",
+      "Michael Lachmeyer"
+    ]
+  },
+  {
+    "carNum": "#480",
+    "team": "Dupré Motorsport Engineering",
+    "car": "Audi S3 Limousine",
+    "drivers": [
+      "Christoph Dupré",
+      "Jürgen Nett",
+      "Joachim Nett"
+    ]
+  },
+  {
+    "carNum": "#500",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW 330i",
+    "drivers": [
+      "Philipp Stahlschmidt",
+      "Philipp Leisen",
+      "Daniel Zils, Sub7BTG"
+    ]
+  },
+  {
+    "carNum": "#501",
+    "team": "Adrenalin Motorsport",
+    "car": "BMW 330i",
+    "drivers": [
+      "Christoph Merkt",
+      "Marvin Kobus",
+      "Hermann Vortkamp",
+      "Jurgen Huber"
+    ]
+  },
+  {
+    "carNum": "#503",
+    "team": "WS Racing",
+    "car": "Toyota Supra",
+    "drivers": [
+      "Fabian Pirrone",
+      "Thomas Ehrhardt",
+      "Niklas Ehrhardt",
+      "Julia Ponkratz"
+    ]
+  },
+  {
+    "carNum": "#514",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "BMW 330i",
+    "drivers": [
+      "Ugo Vicenzi",
+      "Alberto Carobbio",
+      "Heinz Jürgen Kroner",
+      "Calvin De Groot"
+    ]
+  },
+  {
+    "carNum": "#519",
+    "team": "RAVENOL Japan",
+    "car": "Toyota Supra",
+    "drivers": [
+      "Malte Tack",
+      "Manfred Röss",
+      "Matthias Röss"
+    ]
+  },
+  {
+    "carNum": "#520",
+    "team": "Toyo Tires Ring Racing",
+    "car": "Toyota Supra",
+    "drivers": [
+      "Takuma Miyazono",
+      "Masato Kawabata",
+      "Hokuto Matsuyama",
+      "Jin Horino"
+    ]
+  },
+  {
+    "carNum": "#524",
+    "team": "SRS Team Sorg Rennsport",
+    "car": "Toyota Supra",
+    "drivers": [
+      "Piet-Jan Ooms",
+      "Yutaka Seki",
+      "Mathias Baar",
+      "Maximilian Eisberg"
+    ]
+  },
+  {
+    "carNum": "#569",
+    "team": "NFR Motorsports",
+    "car": "BMW 330i",
+    "drivers": [
+      "Lars Van’t Veer",
+      "Benny Baller",
+      "Max de Bruijn",
+      "Stefan Gaukler"
+    ]
+  },
+  {
+    "carNum": "#61",
+    "team": "HWA Engineering Speed",
+    "car": "HWA Evo R",
+    "drivers": [
+      "Adam Adelson",
+      "Lance David Arnold",
+      "James Green",
+      "Renger van der Zande"
+    ]
+  },
+  {
+    "carNum": "#62",
+    "team": "HWA Engineering Speed",
+    "car": "HWA Evo R",
+    "drivers": [
+      "Adam Adelson",
+      "Sebastian Asch",
+      "Luca Ludwig",
+      "Markus Winkelhock"
+    ]
+  },
+  {
+    "carNum": "#63",
+    "team": "HWA Engineering Speed",
+    "car": "HWA Evo R",
+    "drivers": [
+      "Christian Gebhardt",
+      "Evald Holstad",
+      "Peter Ludwig",
+      "Bruno Spengler"
+    ]
+  },
+  {
+    "carNum": "#66",
+    "team": "Reiter Engineering",
+    "car": "KTM X-Bow GTX",
+    "drivers": [
+      "Miklas Born",
+      "Arne Hoffmeister",
+      "Marcel Marchewicz",
+      "Laurents Hörr"
+    ]
+  },
+  {
+    "carNum": "#81",
+    "team": "BMW M Motorsport",
+    "car": "BMW M3 Touring 24h",
+    "drivers": [
+      "Jens Kingmann",
+      "Ugo de Wilde",
+      "Connor de Phillippi",
+      "Neil Verhagen"
+    ]
+  },
+  {
+    "carNum": "#992",
+    "team": "Manthey Team eFuel",
+    "car": "Porsche 911 GT3 Cup",
+    "drivers": [
+      "Björn Griesemann",
+      "Georg Griesemann",
+      "Dirk Adorf",
+      "Marco Holzer"
+    ]
+  }
+];
+
+
+function splitDriverCarNums(driver: DriverCard) {
+  return String(driver.carNum)
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => (part.startsWith("#") ? part : `#${part}`));
+}
+
+function makeRosterDriver(entry: { carNum: string; team: string; car: string; drivers: string[] }, name: string): DriverCard {
+  const highlighted = pilotsSeed.find((driver) => {
+    return driver.name.toLowerCase() === name.toLowerCase() && splitDriverCarNums(driver).includes(entry.carNum);
+  });
+
+  if (highlighted) {
+    return {
+      ...highlighted,
+      carNum: entry.carNum,
+      team: entry.team || highlighted.team,
+      car: entry.car || highlighted.car
+    };
+  }
+
+  return {
+    name,
+    nationality: "—",
+    carNum: entry.carNum,
+    team: entry.team,
+    car: entry.car,
+    role: "piloto inscrito",
+    won24h: "Histórico não cadastrado no app",
+    history: `Piloto inscrito no ${entry.team} para as 24h de Nürburgring 2026 com o ${entry.car}.`,
+    watch: `Acompanhar o stint no ${entry.carNum}: ritmo, tráfego, paradas e possíveis mensagens de Race Control.`
+  };
+}
+
+const rosterDriversSeed: DriverCard[] = rosterSeed.flatMap((entry) => entry.drivers.map((name) => makeRosterDriver(entry, name)));
+const extraHighlightedDriversSeed = pilotsSeed.filter((driver) => {
+  return !rosterDriversSeed.some((rosterDriver) => {
+    return rosterDriver.name.toLowerCase() === driver.name.toLowerCase() && splitDriverCarNums(driver).some((num) => num === rosterDriver.carNum);
+  });
+});
+const allDriversSeed: DriverCard[] = [...rosterDriversSeed, ...extraHighlightedDriversSeed];
+
 function timeToSec(time: string) {
   if (!time || !time.includes(":")) return null;
   const [m, s] = time.trim().split(":");
@@ -1157,7 +2939,7 @@ export default function NurburgringCompanion() {
   }, [carStatus, allCars]);
   const driversByCarNum = useMemo(() => {
     const map: Record<string, DriverCard[]> = {};
-    pilotsSeed.forEach((driver) => {
+    allDriversSeed.forEach((driver) => {
       const nums = String(driver.carNum).split("/").map((part) => part.trim()).filter(Boolean);
       nums.forEach((num) => {
         const normalized = num.startsWith("#") ? num : `#${num}`;
@@ -1174,7 +2956,7 @@ export default function NurburgringCompanion() {
     const q = driverSearch.trim().toLowerCase();
     return driverTeamGroups.filter((group) => {
       const okTeam = driverFilter === "Todos" || group.car.team === driverFilter;
-      const knownDrivers = group.drivers.length ? group.drivers.map((p) => `${p.name} ${p.nationality} ${p.role} ${p.won24h} ${p.history} ${p.watch}`).join(" ") : "pilotos não cadastrados equipe completa";
+      const knownDrivers = group.drivers.length ? group.drivers.map((p) => `${p.name} ${p.nationality} ${p.role} ${p.won24h} ${p.history} ${p.watch}`).join(" ") : "pilotos da equipe lista completa";
       const hay = `${group.car.num} ${group.car.cls} ${group.car.team} ${group.car.car} ${knownDrivers}`.toLowerCase();
       return okTeam && (!q || hay.includes(q));
     });
@@ -1723,7 +3505,7 @@ export default function NurburgringCompanion() {
                   <div className={(live ? "bg-emerald-50 text-emerald-950" : "bg-zinc-50 text-zinc-500") + " mt-4 rounded-2xl p-3 text-sm"}><div className="text-[10px] font-black uppercase tracking-wider">Live timing</div>{live ? <div className="mt-1 flex flex-wrap items-center gap-2"><Badge tone="green">P{live.pos || "—"}</Badge><span className="font-black">{live.time || "sem tempo"}</span><span className="text-xs">{live.cls || c.cls}</span></div> : <div className="mt-1 font-bold">Sem dados nesta sessão</div>}</div>
                   {group && <div className={(group.tone === "red" ? "bg-red-50 text-red-950" : group.tone === "amber" ? "bg-amber-50 text-amber-950" : "bg-blue-50 text-blue-950") + " mt-3 rounded-2xl p-3 text-sm"}><div className="flex flex-wrap items-center gap-2"><Badge tone={group.tone}>{formatRaceMessageType(group.latest.type)}</Badge><span className="text-xs font-black">{group.messages.length} msg</span></div><div className="mt-2 font-bold leading-5">{truncateText(group.latest.translatedMessage, 150)}</div><button onClick={() => setActive("racecontrol")} className="mt-2 text-xs font-black text-red-700">Ver Race Control</button></div>}
                   <button onClick={() => setExpandedCar((current) => current === c.num ? null : c.num)} className="mt-4 flex w-full items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-50"><span>Pilotos / equipe</span>{isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
-                  {isExpanded && <div className="mt-3 rounded-2xl bg-zinc-50 p-3"><div className="mb-2 text-xs font-black uppercase tracking-wider text-zinc-500">Pilotos cadastrados</div>{drivers.length ? <div className="space-y-2">{drivers.map((driver) => <div key={driver.name} className="flex items-center gap-3 rounded-xl bg-white p-2"><DriverAvatar driver={driver} /><div><div className="text-sm font-black">{driver.name}</div><div className="text-xs text-zinc-600">{driver.nationality} • {driver.role}</div></div></div>)}</div> : <div className="rounded-xl bg-white p-3 text-sm font-bold text-zinc-500">Pilotos completos ainda não cadastrados neste app. Mantive o carro/equipe para consulta rápida.</div>}</div>}
+                  {isExpanded && <div className="mt-3 rounded-2xl bg-zinc-50 p-3"><div className="mb-2 text-xs font-black uppercase tracking-wider text-zinc-500">Pilotos cadastrados</div>{drivers.length ? <div className="space-y-2">{drivers.map((driver) => <div key={driver.name} className="flex items-center gap-3 rounded-xl bg-white p-2"><DriverAvatar driver={driver} /><div><div className="text-sm font-black">{driver.name}</div><div className="text-xs text-zinc-600">{driver.nationality} • {driver.role}</div></div></div>)}</div> : <div className="rounded-xl bg-white p-3 text-sm font-bold text-zinc-500">Pilotos ainda não encontrados na lista importada. Mantive o carro/equipe para consulta rápida.</div>}</div>}
                 </div>
               </CardBox>
             );
@@ -1739,7 +3521,7 @@ export default function NurburgringCompanion() {
             <div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={driverSearch} onChange={(e) => setDriverSearch(e.target.value)} placeholder="Buscar por piloto, equipe, carro, número ou histórico..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div>
             <select value={driverFilter} onChange={(e) => setDriverFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{driverTeams.map((t) => <option key={t}>{t}</option>)}</select>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2"><Badge tone="red">{filteredDriverGroups.length} equipes/carros filtrados</Badge><Badge tone="amber">{pilotsSeed.length} pilotos com mini histórico</Badge><Badge tone="blue">6 cards por página</Badge></div>
+          <div className="mt-4 flex flex-wrap items-center gap-2"><Badge tone="red">{filteredDriverGroups.length} equipes/carros filtrados</Badge><Badge tone="amber">{allDriversSeed.length} pilotos cadastrados</Badge><Badge tone="blue">6 cards por página</Badge></div>
         </CardBox>
 
         <CardBox className="p-4">
