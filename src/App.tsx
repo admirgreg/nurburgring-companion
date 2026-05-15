@@ -683,6 +683,8 @@ export default function NurburgringCompanion() {
   const [carSearch, setCarSearch] = useState("");
   const [carClassFilter, setCarClassFilter] = useState("Todos");
   const [carGroupFilter, setCarGroupFilter] = useState("Todos");
+  const [carsPage, setCarsPage] = useState(1);
+  const carsPerPage = 10;
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState("Todos");
 
@@ -933,6 +935,21 @@ export default function NurburgringCompanion() {
       return okClass && okGroup && (!q || hay.includes(q));
     });
   }, [allCars, carSearch, carClassFilter, carGroupFilter]);
+  useEffect(() => {
+    setCarsPage(1);
+  }, [carSearch, carClassFilter, carGroupFilter]);
+
+  const totalCarPages = Math.max(1, Math.ceil(filteredCars.length / carsPerPage));
+
+  const paginatedCars = useMemo(() => {
+    const safePage = Math.min(Math.max(carsPage, 1), totalCarPages);
+    const start = (safePage - 1) * carsPerPage;
+    return filteredCars.slice(start, start + carsPerPage);
+  }, [filteredCars, carsPage, totalCarPages]);
+
+  const carPageStart = filteredCars.length ? (Math.min(Math.max(carsPage, 1), totalCarPages) - 1) * carsPerPage + 1 : 0;
+  const carPageEnd = Math.min(Math.min(Math.max(carsPage, 1), totalCarPages) * carsPerPage, filteredCars.length);
+
   const checkedCount = allCars.filter((c) => checked[c.num]).length;
   const favoriteCars = useMemo(() => allCars.filter((c) => favorites[c.num]), [allCars, favorites]);
   const liveByNum = useMemo(() => {
@@ -1406,11 +1423,58 @@ export default function NurburgringCompanion() {
             <select value={carClassFilter} onChange={(e) => setCarClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{classOptions.map((c) => <option key={c}>{c}</option>)}</select>
             <select value={carGroupFilter} onChange={(e) => setCarGroupFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{groupOptions.map((g) => <option key={g}>{g}</option>)}</select>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros vis?veis</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">161 cards</Badge><Badge tone={raceStats.attention ? "red" : "green"}>{raceStats.attention} alertas RC</Badge></div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros filtrados</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">10 por página</Badge><Badge tone="gray">Página {carsPage} de {totalCarPages}</Badge><Badge tone={raceStats.attention ? "red" : "green"}>{raceStats.attention} alertas RC</Badge></div>
         </CardBox>
 
+        <CardBox className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-zinc-600">
+              Mostrando <span className="font-black text-zinc-950">{carPageStart}</span> a <span className="font-black text-zinc-950">{carPageEnd}</span> de <span className="font-black text-zinc-950">{filteredCars.length}</span> carros
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setCarsPage(1)}
+                disabled={carsPage <= 1}
+                className={(carsPage <= 1 ? "bg-zinc-100 text-zinc-400" : "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50") + " rounded-2xl px-4 py-2 text-sm font-black"}
+              >
+                Primeira
+              </button>
+
+              <button
+                onClick={() => setCarsPage((p) => Math.max(1, p - 1))}
+                disabled={carsPage <= 1}
+                className={(carsPage <= 1 ? "bg-zinc-100 text-zinc-400" : "bg-zinc-900 text-white hover:bg-zinc-800") + " rounded-2xl px-4 py-2 text-sm font-black"}
+              >
+                ← Anterior
+              </button>
+
+              <div className="rounded-2xl bg-zinc-100 px-4 py-2 text-sm font-black text-zinc-700">
+                {carsPage} / {totalCarPages}
+              </div>
+
+              <button
+                onClick={() => setCarsPage((p) => Math.min(totalCarPages, p + 1))}
+                disabled={carsPage >= totalCarPages}
+                className={(carsPage >= totalCarPages ? "bg-zinc-100 text-zinc-400" : "bg-red-700 text-white hover:bg-red-800") + " rounded-2xl px-4 py-2 text-sm font-black"}
+              >
+                Próxima →
+              </button>
+
+              <button
+                onClick={() => setCarsPage(totalCarPages)}
+                disabled={carsPage >= totalCarPages}
+                className={(carsPage >= totalCarPages ? "bg-zinc-100 text-zinc-400" : "bg-white text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50") + " rounded-2xl px-4 py-2 text-sm font-black"}
+              >
+                Última
+              </button>
+            </div>
+          </div>
+        </CardBox>
+
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredCars.map((c) => {
+          {paginatedCars.map((c) => {
             const live = liveByNum[c.num];
             const group = raceGroupByNum[c.num];
             const borderClass = group ? (group.tone === "red" ? "border-red-300" : group.tone === "amber" ? "border-amber-300" : "border-blue-300") : "";
