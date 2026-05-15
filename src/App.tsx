@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound, ShieldCheck, LogOut, LockKeyhole } from "lucide-react";
 
 const STORAGE_KEY = "nurburgring-2026-companion-v6-race-watch";
+const AUTH_TOKEN_KEY = "nurburgring-2026-companion-auth-token";
+const API_BASE_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 const ADMIN_SESSION_KEY = "nurburgring-2026-companion-admin-session";
 const ADMIN_PASSWORD = "ring2026";
 const RACE_START_BRT = "2026-05-16T10:00:00-03:00";
@@ -24,6 +26,7 @@ type RaceControlMessage = {
   raw: unknown;
 };
 type RaceControlRawMessage = Record<string, unknown> | string;
+type AppUser = { id: string; email: string; displayName?: string };
 type RaceControlGroup = {
   num: string;
   messages: RaceControlMessage[];
@@ -2605,37 +2608,146 @@ export default function NurburgringCompanion() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [summaryCopied, setSummaryCopied] = useState(false);
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem(AUTH_TOKEN_KEY) || "");
+  const [authUser, setAuthUser] = useState<AppUser | null>(null);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [syncStatus, setSyncStatus] = useState(authToken ? "carregando conta" : "local");
+  const [remoteReady, setRemoteReady] = useState(false);
+  const saveRemoteTimerRef = useRef<number | null>(null);
+
+  const applyPersistedState = (parsed: any) => {
+    setQRows(parsed.qRows || q1Seed);
+    setQualifyingRows(parsed.qualifyingRows || parsed.qRows || q1Seed);
+    setQualifyingFrozenAt(parsed.qualifyingFrozenAt || "");
+    setFinalRows(parsed.finalRows || []);
+    setFinalSnapshotAt(parsed.finalSnapshotAt || "");
+    setAllCars(parsed.allCars || carSeed);
+    setChecked(parsed.checked || {});
+    setFavorites(parsed.favorites || { "#80": true, "#3": true, "#911": true, "#1": true, "#99": true, "#64": true, "#67": true, "#300": true, "#632": true });
+    setPhases(parsed.phases || phasesSeed);
+    setRaceEvents(parsed.raceEvents || raceEventsSeed);
+    setPoleGuess(parsed.poleGuess || "#80 Mercedes-AMG Team RAVENOL");
+    setApiUrl(parsed.apiUrl || "");
+    setAutoRefresh(parsed.autoRefresh || false);
+    setRefreshSeconds(parsed.refreshSeconds || 30);
+    setLiveEventId(parsed.liveEventId || "50");
+    setAutoConnectLive(parsed.autoConnectLive ?? true);
+    setAutoReconnectLive(parsed.autoReconnectLive ?? true);
+  };
+
+  const persistedState = useMemo(() => ({
+    qRows,
+    qualifyingRows,
+    qualifyingFrozenAt,
+    finalRows,
+    finalSnapshotAt,
+    allCars,
+    checked,
+    favorites,
+    phases,
+    raceEvents,
+    poleGuess,
+    apiUrl,
+    autoRefresh,
+    refreshSeconds,
+    liveEventId,
+    autoConnectLive,
+    autoReconnectLive
+  }), [qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds, liveEventId, autoConnectLive, autoReconnectLive]);
+
+  const apiRequest = async (path: string, options: RequestInit = {}) => {
+    const headers = new Headers(options.headers || {});
+    headers.set("Content-Type", "application/json");
+    if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
+
+    const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  };
+
+  const saveAuthSession = (token: string, user: AppUser) => {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    setRemoteReady(false);
+    setAuthToken(token);
+    setAuthUser(user);
+    setAuthError("");
+  };
 
   useEffect(() => {
     try {
       if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "true") setIsAdmin(true);
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setQRows(parsed.qRows || q1Seed);
-        setQualifyingRows(parsed.qualifyingRows || parsed.qRows || q1Seed);
-        setQualifyingFrozenAt(parsed.qualifyingFrozenAt || "");
-        setFinalRows(parsed.finalRows || []);
-        setFinalSnapshotAt(parsed.finalSnapshotAt || "");
-        setAllCars(parsed.allCars || carSeed);
-        setChecked(parsed.checked || {});
-        setFavorites(parsed.favorites || { "#80": true, "#3": true, "#911": true, "#1": true, "#99": true, "#64": true, "#67": true, "#300": true, "#632": true });
-        setPhases(parsed.phases || phasesSeed);
-        setRaceEvents(parsed.raceEvents || raceEventsSeed);
-        setPoleGuess(parsed.poleGuess || "#80 Mercedes-AMG Team RAVENOL");
-        setApiUrl(parsed.apiUrl || "");
-        setAutoRefresh(parsed.autoRefresh || false);
-        setRefreshSeconds(parsed.refreshSeconds || 30);
-        setLiveEventId(parsed.liveEventId || "50");
-        setAutoConnectLive(parsed.autoConnectLive ?? true);
-        setAutoReconnectLive(parsed.autoReconnectLive ?? true);
-      }
+      if (raw) applyPersistedState(JSON.parse(raw));
     } catch {}
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds, liveEventId, autoConnectLive, autoReconnectLive }));
-  }, [qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds, liveEventId, autoConnectLive, autoReconnectLive]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedState));
+  }, [persistedState]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!authToken) {
+      setAuthUser(null);
+      setRemoteReady(false);
+      setSyncStatus("local");
+      return;
+    }
+
+    const loadRemoteState = async () => {
+      try {
+        setSyncStatus("carregando conta");
+        const me = await apiRequest("/api/me");
+        if (cancelled) return;
+        setAuthUser(me.user);
+
+        const remote = await apiRequest("/api/state");
+        if (cancelled) return;
+        if (remote.state && Object.keys(remote.state).length > 0) {
+          applyPersistedState(remote.state);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remote.state));
+        }
+        setRemoteReady(true);
+        setSyncStatus("sincronizado");
+      } catch (err: any) {
+        if (cancelled) return;
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        setAuthToken("");
+        setAuthUser(null);
+        setRemoteReady(false);
+        setSyncStatus("local");
+        setAuthError(String(err.message || err));
+      }
+    };
+
+    loadRemoteState();
+    return () => {
+      cancelled = true;
+    };
+  }, [authToken]);
+
+  useEffect(() => {
+    if (!authToken || !authUser || !remoteReady) return;
+    if (saveRemoteTimerRef.current) window.clearTimeout(saveRemoteTimerRef.current);
+    setSyncStatus("salvando");
+    saveRemoteTimerRef.current = window.setTimeout(async () => {
+      try {
+        await apiRequest("/api/state", { method: "PUT", body: JSON.stringify({ state: persistedState }) });
+        setSyncStatus(`salvo ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`);
+      } catch (err: any) {
+        setSyncStatus("erro ao salvar");
+        setAuthError(String(err.message || err));
+      }
+    }, 1800);
+    return () => {
+      if (saveRemoteTimerRef.current) window.clearTimeout(saveRemoteTimerRef.current);
+    };
+  }, [persistedState, authToken, authUser, remoteReady]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -3090,6 +3202,33 @@ export default function NurburgringCompanion() {
     raceMessageKeysRef.current = new Set();
   };
 
+  const submitAuth = async () => {
+    try {
+      setAuthError("");
+      setSyncStatus(authMode === "register" ? "criando conta" : "entrando");
+      const data = await apiRequest(authMode === "register" ? "/api/auth/register" : "/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: authEmail, password: authPassword, displayName: authName })
+      });
+      saveAuthSession(data.token, data.user);
+      setAuthPassword("");
+      setSyncStatus("sincronizado");
+    } catch (err: any) {
+      setSyncStatus(authToken ? syncStatus : "local");
+      setAuthError(String(err.message || err));
+    }
+  };
+
+  const logoutUser = () => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    setAuthToken("");
+    setAuthUser(null);
+    setRemoteReady(false);
+    setAuthPassword("");
+    setAuthError("");
+    setSyncStatus("local");
+  };
+
   const loginAdmin = () => {
     if (adminPassword.trim() !== ADMIN_PASSWORD) {
       setAdminError("Senha inválida. Tente novamente.");
@@ -3223,6 +3362,44 @@ export default function NurburgringCompanion() {
         </div>
       </section>
     )}
+
+    <section className="mb-6 rounded-[2rem] border border-zinc-200 bg-white p-5 shadow-sm">
+      {authUser ? (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-sm font-black uppercase tracking-widest text-zinc-500"><UserRound size={16} /> Conta sincronizada</div>
+            <h2 className="mt-2 text-2xl font-black">{authUser.displayName || authUser.email}</h2>
+            <p className="mt-1 text-sm text-zinc-600">Dados salvos por usuário no backend. Status: <b>{syncStatus}</b>.</p>
+          </div>
+          <button onClick={logoutUser} className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-zinc-800"><LogOut size={16} /> Sair da conta</button>
+        </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[1fr_220px_240px_180px_130px] xl:items-end">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-zinc-500"><UserRound size={16} /> Conta do app</div>
+            <h2 className="mt-2 text-2xl font-black">Salvar online por usuário</h2>
+            <p className="mt-1 text-sm leading-6 text-zinc-600">Entre ou crie uma conta para sincronizar favoritos, checklist, snapshots, timeline e configurações.</p>
+          </div>
+          {authMode === "register" && (
+            <div>
+              <div className="mb-1 text-xs font-black uppercase tracking-wider text-zinc-500">Nome</div>
+              <input value={authName} onChange={(e) => setAuthName(e.target.value)} placeholder="Seu nome" className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600" />
+            </div>
+          )}
+          <div>
+            <div className="mb-1 text-xs font-black uppercase tracking-wider text-zinc-500">Email</div>
+            <input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="voce@email.com" className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600" />
+          </div>
+          <div>
+            <div className="mb-1 text-xs font-black uppercase tracking-wider text-zinc-500">Senha</div>
+            <input type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitAuth(); }} placeholder="mín. 6 caracteres" className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600" />
+          </div>
+          <button onClick={submitAuth} className="rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-red-800">{authMode === "register" ? "Criar conta" : "Entrar"}</button>
+          <button onClick={() => { setAuthMode(authMode === "register" ? "login" : "register"); setAuthError(""); }} className="rounded-2xl bg-zinc-100 px-4 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-950 hover:text-white">{authMode === "register" ? "Já tenho" : "Criar"}</button>
+          {authError && <div className="xl:col-span-5 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-800">Erro: {authError}</div>}
+        </div>
+      )}
+    </section>
 
     {resetConfirmOpen && (
       <section className="mb-6 rounded-[2rem] border border-red-200 bg-red-50 p-5 shadow-sm">
