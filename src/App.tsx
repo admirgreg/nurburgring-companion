@@ -1,15 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, CheckCircle2, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity } from "lucide-react";
+import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity } from "lucide-react";
 
 const STORAGE_KEY = "nurburgring-2026-companion-v6-race-watch";
 const RACE_START_BRT = "2026-05-16T10:00:00-03:00";
 const RACE_END_BRT = "2026-05-17T10:00:00-03:00";
 
-type QRow = { pos?: number; num: string; team: string; car: string; time: string; cls: string };
+type QRow = { pos?: number; num: string; team: string; car: string; time: string; cls: string; change?: number; pitStops?: string; pitState?: string; lastLap?: string };
 type GridCar = { num: string; cls: string; team: string; car: string; why: string; group: string; photo: string };
 type Phase = { phase: string; leader: string; surprise: string; note: string };
 type DriverCard = { name: string; nationality: string; carNum: string; team: string; car: string; role: string; won24h: string; history: string; watch: string };
 type RaceEvent = { id: number; time: string; title: string; note: string; tag: string };
+type RaceControlMessage = {
+  time: string;
+  carNum: string;
+  message: string;
+  translatedMessage: string;
+  type: "penalty" | "investigation" | "technical" | "code60" | "gps" | "no-action" | "info";
+  raw: unknown;
+};
+type RaceControlRawMessage = Record<string, unknown> | string;
 
 const q1Seed: QRow[] = [
   { pos: 1, num: "#80", team: "Mercedes-AMG Team RAVENOL", car: "Mercedes-AMG GT3", time: "8:14.957", cls: "SP9" },
@@ -299,6 +308,7 @@ const tabs = [
   { id: "quali", label: "Qualifying", icon: Trophy },
   { id: "auto", label: "Auto/API", icon: Wifi },
   { id: "live", label: "Live Timing", icon: Wifi },
+  { id: "racecontrol", label: "Race Control", icon: Flag },
   { id: "carros", label: "Carros", icon: Car },
   { id: "pilotos", label: "Pilotos", icon: Flag },
   { id: "checklist", label: "Checklist", icon: ListChecks },
@@ -322,6 +332,139 @@ function gap(time: string, best: string) {
   if (a === null || b === null) return "";
   const g = a - b;
   return Math.abs(g) < 0.001 ? "—" : `+${g.toFixed(3)}s`;
+}
+
+function classifyRaceMessage(text: string): RaceControlMessage["type"] {
+  const lower = text.toLowerCase();
+
+  if (lower.includes("no further action")) return "no-action";
+  if (lower.includes("technical flag") || lower.includes("black/orange")) return "technical";
+  if (lower.includes("code 60") || lower.includes("code60")) return "code60";
+  if (lower.includes("under investigation") || lower.includes("reported to the stewards")) return "investigation";
+  if (lower.includes("penalty") || lower.includes("time penalty") || lower.includes("stop and go") || lower.includes("non respect") || lower.includes("non rescpect")) return "penalty";
+  if (lower.includes("gps")) return "gps";
+
+  return "info";
+}
+
+function getRaceMessageTone(type: RaceControlMessage["type"]) {
+  if (type === "penalty" || type === "technical") return "red";
+  if (type === "investigation" || type === "code60") return "amber";
+  if (type === "gps") return "blue";
+  if (type === "no-action") return "green";
+  return "gray";
+}
+
+function formatRaceMessageType(type: string) {
+  const labels: Record<string, string> = {
+    Tudo: "Tudo",
+    Todas: "Todas",
+    penalty: "Punição",
+    investigation: "Investigação",
+    technical: "Técnico",
+    code60: "Code 60",
+    gps: "GPS",
+    "no-action": "Sem ação",
+    info: "Informação"
+  };
+  return labels[type] || type;
+}
+
+function translateRaceMessage(text: string) {
+  const replacements: Array<[RegExp, string]> = [
+    [/\bplease check (?:your|you) driver id\b/gi, "verifique o ID do piloto"],
+    [/\bdriver id\b/gi, "ID do piloto"],
+    [/\bis reported to the stewards\b/gi, "foi encaminhado aos comissários"],
+    [/\breporting to the stewards\b/gi, "encaminhamento aos comissários"],
+    [/\bdriving maneuver\b/gi, "manobra de condução"],
+    [/\bnon rescpect of the speed limit\b/gi, "não respeitou o limite de velocidade"],
+    [/\bnon respect of the speed limit\b/gi, "não respeitou o limite de velocidade"],
+    [/\bnon rescpect of code 60\b/gi, "não respeitou Code 60"],
+    [/\bnon respect of code 60\b/gi, "não respeitou Code 60"],
+    [/\bnon respect code 60\b/gi, "não respeitou Code 60"],
+    [/\bat the end of the first race lap\b/gi, "no fim da primeira volta de corrida"],
+    [/\bend of the first race lap\b/gi, "fim da primeira volta de corrida"],
+    [/\bfirst race lap\b/gi, "primeira volta de corrida"],
+    [/\bstart after the starting group\b/gi, "larga atrás do grupo de largada"],
+    [/\bstop and go penalty of (\d+)\s*sec\b/gi, "penalidade de stop and go de $1 s"],
+    [/\bstop and go penalty\b/gi, "penalidade de stop and go"],
+    [/\bstop and go\b/gi, "stop and go"],
+    [/\bDMSB penalty points\b/gi, "pontos de penalidade DMSB"],
+    [/\bpenalty points\b/gi, "pontos de penalidade"],
+    [/\bfor the next race\b/gi, "para a próxima corrida"],
+    [/\b(\d+)\s*sec\b/gi, "$1 s"],
+    [/\bdouble yellow\b/gi, "bandeira amarela dupla"],
+    [/\bnon rescpect\b/gi, "não respeitou"],
+    [/\bnon respect\b/gi, "não respeitou"],
+    [/\bcar\b/gi, "carro"],
+    [/\bdriver\b/gi, "piloto"],
+    [/\bteam\b/gi, "equipe"],
+    [/\blap\b/gi, "volta"],
+    [/\bsector\b/gi, "setor"],
+    [/\bpits?\b/gi, "box"],
+    [/\bpit lane\b/gi, "pit lane"],
+    [/\bunder investigation\b/gi, "sob investigação"],
+    [/\breported to the stewards\b/gi, "encaminhado aos comissários"],
+    [/\bno further action\b/gi, "sem ação adicional"],
+    [/\btime penalty\b/gi, "penalidade de tempo"],
+    [/\bpenalty\b/gi, "penalidade"],
+    [/\btechnical flag\b/gi, "bandeira técnica"],
+    [/\bblack\/orange flag\b/gi, "bandeira preta e laranja"],
+    [/\bcode 60\b/gi, "Code 60"],
+    [/\byellow flags?\b/gi, "bandeira amarela"],
+    [/\bdouble yellow flags?\b/gi, "bandeira amarela dupla"],
+    [/\bgreen flag\b/gi, "bandeira verde"],
+    [/\bred flag\b/gi, "bandeira vermelha"],
+    [/\bspeed limit\b/gi, "limite de velocidade"],
+    [/\btrack limits\b/gi, "limites de pista"],
+    [/\bunsafe release\b/gi, "saída insegura do box"],
+    [/\bcausing a collision\b/gi, "causou colisão"],
+    [/\bovertaking\b/gi, "ultrapassagem"],
+    [/\bnot respecting\b/gi, "não respeitou"],
+    [/\bslow zone\b/gi, "zona lenta"],
+    [/\bmeatball\b/gi, "bandeira técnica"]
+  ];
+
+  return replacements.reduce((translated, [pattern, replacement]) => translated.replace(pattern, replacement), text);
+}
+
+function readRaceField(msg: RaceControlRawMessage, keys: string[]) {
+  if (typeof msg !== "object" || msg === null) return "";
+  for (const key of keys) {
+    const value = msg[key];
+    if (value !== undefined && value !== null) return String(value).trim();
+  }
+  return "";
+}
+
+function normalizeRaceMessages(messages: RaceControlRawMessage[]): RaceControlMessage[] {
+  return messages.map((msg) => {
+    const rawText = readRaceField(msg, ["MESSAGE", "MSG", "TEXT", "MESSAGE_TEXT", "DESCRIPTION", "NOTE"]);
+    const fallbackText = typeof msg === "string" ? msg : "";
+    const message = rawText || fallbackText || JSON.stringify(msg);
+    const explicitCar = readRaceField(msg, ["STNR", "CARNO", "CARNUMBER", "CAR_NUMBER"]);
+    const carMatch = message.match(/#\s?(\d+)/) ?? explicitCar.match(/(\d+)/);
+    const carNum = carMatch ? `#${carMatch[1]}` : "";
+    const timeFromText = message.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0] ?? "";
+    const time = readRaceField(msg, ["TIME", "TIMESTAMP", "LOCALTIME", "TOD"]) || timeFromText;
+
+    return {
+      time,
+      carNum,
+      message,
+      translatedMessage: translateRaceMessage(message),
+      type: classifyRaceMessage(message),
+      raw: msg
+    };
+  });
+}
+
+function getRaceMessageKey(message: RaceControlMessage) {
+  return `${message.time}|${message.carNum}|${message.message}`;
+}
+
+function truncateText(text: string, max = 160) {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
 function formatDuration(ms: number) {
@@ -359,6 +502,44 @@ function StatBox({ title, value, note, tone = "gray" }: { title: string; value: 
   return <div className={`rounded-2xl ${bg} p-4`}><div className="text-xs font-black uppercase tracking-wider text-zinc-500">{title}</div><div className="mt-1 text-2xl font-black md:text-3xl">{value}</div>{note && <div className="mt-1 text-sm text-zinc-600">{note}</div>}</div>;
 }
 
+function isPitState(value?: string) {
+  const clean = String(value ?? "").trim().toLowerCase();
+  return !!clean && clean !== "0" && clean !== "false" && clean !== "null";
+}
+
+function LiveTimingRow({ row, index, leaderTime }: { row: QRow; index: number; leaderTime: string }) {
+  const positionChange = Number(row.change || 0);
+  const hasPit = isPitState(row.pitState);
+
+  return (
+    <tr className={`${index % 2 ? "bg-white" : "bg-zinc-50"} border-b border-zinc-100`}>
+      <td className="px-3 py-2 font-black">
+        <div className="flex flex-wrap items-center gap-1">
+          P{row.pos || index + 1}
+          {positionChange !== 0 && <Badge tone={positionChange > 0 ? "green" : "red"}>{positionChange > 0 ? `+${positionChange}` : positionChange}</Badge>}
+        </div>
+      </td>
+      <td className="px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-black text-red-700">{row.num}</span>
+          {hasPit && <Badge tone="amber">PIT</Badge>}
+        </div>
+      </td>
+      <td className="px-3 py-2 font-bold">{row.team || "—"}</td>
+      <td className="px-3 py-2 text-zinc-700">{row.car || "—"}</td>
+      <td className="px-3 py-2"><Badge tone="gray">{row.cls || "—"}</Badge></td>
+      <td className="px-3 py-2">
+        <div className="font-black">{row.time || "—"}</div>
+        {row.lastLap && <div className="text-xs font-bold text-zinc-500">Última {row.lastLap}</div>}
+      </td>
+      <td className="px-3 py-2 text-zinc-600">
+        {index === 0 ? "—" : gap(row.time, leaderTime)}
+        {row.pitStops && <div className="text-xs font-bold text-zinc-500">{row.pitStops} pits</div>}
+      </td>
+    </tr>
+  );
+}
+
 function PhotoBox({ src, label }: { src: string; label: string }) {
   const [failed, setFailed] = useState(false);
   if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className="h-28 w-full rounded-2xl object-contain bg-zinc-50" />;
@@ -387,7 +568,13 @@ export default function NurburgringCompanion() {
   const [apiError, setApiError] = useState("");
   const [liveSearch, setLiveSearch] = useState("");
   const [liveClassFilter, setLiveClassFilter] = useState("Todas");
+  const [raceMessages, setRaceMessages] = useState<RaceControlMessage[]>([]);
+  const [raceMessageFilter, setRaceMessageFilter] = useState("Tudo");
+  const [raceUnreadCount, setRaceUnreadCount] = useState(0);
+  const [raceNotice, setRaceNotice] = useState<RaceControlMessage | null>(null);
   const liveWsRef = useRef<WebSocket | null>(null);
+  const autoConnectStartedRef = useRef(false);
+  const raceMessageKeysRef = useRef<Set<string>>(new Set());
   const [liveEventId, setLiveEventId] = useState("50");
   const [liveStatus, setLiveStatus] = useState("desconectado");
   const [liveMeta, setLiveMeta] = useState({ session: "", heat: "", track: "", cars: 0, updated: "" });
@@ -428,6 +615,10 @@ export default function NurburgringCompanion() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (active === "racecontrol") setRaceUnreadCount(0);
+  }, [active]);
+
   const fetchApi = async () => {
     if (!apiUrl.trim()) {
       setApiError("Cole uma URL de API/JSON primeiro.");
@@ -459,19 +650,29 @@ export default function NurburgringCompanion() {
   };
 
   const normalizeLiveRows = (result: any[]) => {
-    return result.map((r: any, idx: number) => {
+    const rows: QRow[] = [];
+    result.forEach((r: any, idx: number) => {
       const numRaw = String(r.STNR ?? r.NUMBER ?? r.STARTINGNO ?? r.NO ?? r.num ?? "").trim();
+      const cleanNum = numRaw.replace(/^#/, "").trim();
+      if (!cleanNum || cleanNum === "-" || cleanNum.toLowerCase() === "null" || cleanNum.toLowerCase() === "undefined") return;
       const best = String(r.FASTESTLAP ?? r.BESTLAP ?? r.BESTTIME ?? r.time ?? "").trim();
       const last = String(r.LASTLAPTIME ?? r.LASTLAP ?? r.lastLap ?? "").trim();
-      return {
-        pos: Number(r.POSITION ?? r.POS ?? r.RANK ?? idx + 1),
-        num: numRaw.startsWith("#") ? numRaw : `#${numRaw || idx + 1}`,
+      const pitState = String(r.TPST ?? r.PITSTATE ?? r.PITSTATUS ?? "").trim();
+      const position = Number(r.POSITION ?? r.POS ?? r.RANK ?? idx + 1);
+      rows.push({
+        pos: Number.isFinite(position) && position > 0 ? position : idx + 1,
+        num: `#${cleanNum}`,
         team: String(r.TEAM ?? r.NAME ?? r.ENTRANT ?? r.DRIVER ?? "").trim(),
         car: String(r.CAR ?? r.VEHICLE ?? r.MODEL ?? "").trim(),
         time: best || last || "",
-        cls: String(r.CLASSNAME ?? r.CLASS ?? r.CUP ?? "").trim()
-      };
+        cls: String(r.CLASSNAME ?? r.CLASS ?? r.CUP ?? "").trim(),
+        change: Number(r.CHG ?? r.change ?? 0),
+        pitStops: String(r.PITSTOPCOUNT ?? r.PITS ?? "").trim(),
+        pitState,
+        lastLap: last
+      });
     });
+    return rows;
   };
 
   const addLiveLog = (text: string) => {
@@ -491,29 +692,49 @@ export default function NurburgringCompanion() {
         setLiveStatus("conectado");
         setApiStatus("ok");
         addLiveLog(`WebSocket conectado no evento ${liveEventId}`);
-        ws.send(JSON.stringify({ eventId: liveEventId, eventPid: [0, 4], clientLocalTime: Date.now() }));
+        ws.send(JSON.stringify({ eventId: liveEventId, eventPid: [0, 3, 4, 7], clientLocalTime: Date.now() }));
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.PID === "0") {
+          if (String(data.PID) === "0") {
             const result = Array.isArray(data.RESULT) ? data.RESULT : [];
             if (result.length) {
               const parsed = normalizeLiveRows(result);
+              if (!parsed.length) {
+                addLiveLog(`Pacote principal recebido sem carros válidos: ${result.length} linhas`);
+                return;
+              }
               setQRows(parsed);
               setLastUpdated(new Date().toLocaleTimeString("pt-BR"));
               setLiveMeta({
                 session: String(data.SESSION ?? ""),
                 heat: String(data.HEAT ?? data.SESSIONNAME ?? ""),
                 track: String(data.TRACKNAME ?? ""),
-                cars: result.length,
+                cars: parsed.length,
                 updated: new Date().toLocaleTimeString("pt-BR")
               });
-              addLiveLog(`Pacote principal recebido: ${result.length} carros`);
+              addLiveLog(`Pacote principal recebido: ${parsed.length} carros válidos`);
             }
           }
-          if (data.PID === "4") {
+          if (String(data.PID) === "3" && Array.isArray(data.MESSAGES)) {
+            const normalized = normalizeRaceMessages(data.MESSAGES);
+            const previousKeys = raceMessageKeysRef.current;
+            const newMessages = normalized.filter((msg) => !previousKeys.has(getRaceMessageKey(msg)));
+            raceMessageKeysRef.current = new Set(normalized.map(getRaceMessageKey));
+            setRaceMessages(normalized);
+
+            if (normalized[0]) setRaceNotice(normalized[0]);
+            if (previousKeys.size > 0 && newMessages.length > 0) {
+              setRaceUnreadCount((count) => count + newMessages.length);
+              setRaceNotice(newMessages[0]);
+              addLiveLog(`Nova mensagem Race Control: ${truncateText(newMessages[0].message, 80)}`);
+            }
+
+            addLiveLog(`Race Control recebido: ${normalized.length} mensagens`);
+          }
+          if (String(data.PID) === "4") {
             const state = String(data.TRACKSTATE ?? data.STATE ?? data.FLAG ?? data.TEXT ?? "Atualizado");
             setLiveTrackState(state);
             addLiveLog(`Estado da pista: ${state}`);
@@ -550,6 +771,16 @@ export default function NurburgringCompanion() {
   };
 
   useEffect(() => {
+    if (autoConnectStartedRef.current) return;
+    const id = window.setTimeout(() => {
+      if (autoConnectStartedRef.current) return;
+      autoConnectStartedRef.current = true;
+      connectLiveTiming();
+    }, 350);
+    return () => window.clearTimeout(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     return () => {
       if (liveWsRef.current) liveWsRef.current.close();
     };
@@ -562,8 +793,29 @@ export default function NurburgringCompanion() {
     return () => clearInterval(id);
   }, [autoRefresh, apiUrl, refreshSeconds]);
 
-  const sortedQ = useMemo(() => [...qRows].map((r, idx) => ({ ...r, _idx: idx, sec: timeToSec(r.time) })).sort((a, b) => (a.sec ?? 9999) - (b.sec ?? 9999)).map((r, i) => ({ ...r, pos: i + 1 })), [qRows]);
-  const bestTime = sortedQ[0]?.time || "";
+  const sortedQ = useMemo(() => {
+    return [...qRows]
+      .map((r, idx) => {
+        const livePos = Number(r.pos);
+        return {
+          ...r,
+          _idx: idx,
+          sec: timeToSec(r.time),
+          livePos: Number.isFinite(livePos) && livePos > 0 ? livePos : undefined
+        };
+      })
+      .sort((a, b) => {
+        const aPos = a.livePos ?? Number.POSITIVE_INFINITY;
+        const bPos = b.livePos ?? Number.POSITIVE_INFINITY;
+        if (aPos !== bPos) return aPos - bPos;
+        const aSec = a.sec ?? Number.POSITIVE_INFINITY;
+        const bSec = b.sec ?? Number.POSITIVE_INFINITY;
+        if (aSec !== bSec) return aSec - bSec;
+        return a._idx - b._idx;
+      })
+      .map((r, i) => ({ ...r, pos: r.livePos ?? i + 1 }));
+  }, [qRows]);
+  const bestTime = sortedQ.find((r) => r.time)?.time || "";
   const raceStart = new Date(RACE_START_BRT).getTime();
   const raceEnd = new Date(RACE_END_BRT).getTime();
   const raceStarted = now >= raceStart;
@@ -602,6 +854,7 @@ export default function NurburgringCompanion() {
       return okClass && (!q || hay.includes(q));
     });
   }, [sortedQ, liveSearch, liveClassFilter]);
+  const filteredLeaderTime = useMemo(() => filteredLiveRows.find((row) => row.time)?.time || "", [filteredLiveRows]);
 
   const liveLeadersByClass = useMemo(() => {
     const map = new Map<string, QRow & { pos?: number }>();
@@ -611,6 +864,11 @@ export default function NurburgringCompanion() {
     });
     return Array.from(map.entries()).map(([cls, row]) => ({ cls, row })).sort((a, b) => Number(a.row.pos || 999) - Number(b.row.pos || 999));
   }, [sortedQ]);
+  const raceMessageTypes = useMemo(() => ["Tudo", ...Array.from(new Set(raceMessages.map((m) => m.type)))], [raceMessages]);
+  const filteredRaceMessages = useMemo(() => {
+    if (raceMessageFilter === "Tudo") return raceMessages;
+    return raceMessages.filter((m) => m.type === raceMessageFilter);
+  }, [raceMessages, raceMessageFilter]);
   const statusSummary = useMemo(() => {
     const entries = Object.entries(carStatus).filter(([, v]) => v && v !== "Normal");
     return entries.map(([num, status]) => ({ num, status, car: allCars.find((c) => c.num === num) })).filter((x) => x.car);
@@ -637,6 +895,10 @@ export default function NurburgringCompanion() {
     setAutoRefresh(false);
     setApiStatus("manual");
     setApiError("");
+    setRaceMessages([]);
+    setRaceUnreadCount(0);
+    setRaceNotice(null);
+    raceMessageKeysRef.current = new Set();
   };
 
   const updateRow = (index: number, key: keyof QRow, value: string) => setQRows((rows) => rows.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
@@ -653,19 +915,110 @@ export default function NurburgringCompanion() {
   return <div className="min-h-screen bg-zinc-100 p-4 text-zinc-950 md:p-8"><div className="mx-auto max-w-7xl">
     <header className="mb-6 overflow-hidden rounded-3xl bg-zinc-950 text-white shadow-lg"><div className="grid gap-0 md:grid-cols-[1.45fr_.55fr]"><div className="p-6 md:p-8"><div className="mb-4 flex flex-wrap items-center gap-2"><Badge tone="red">24h Nürburgring 2026</Badge><Badge>Companion interativo</Badge><Badge tone="amber">Horários em Brasília</Badge></div><h1 className="text-3xl font-black tracking-tight md:text-5xl">Race Control de bolso</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300 md:text-base">Painel para acompanhar classificação, favoritos, checklist interativo, cronômetros e referências de ritmo.</p></div><div className="border-t border-white/10 bg-white/5 p-6 md:border-l md:border-t-0 md:p-8"><div className="text-sm uppercase tracking-widest text-zinc-400">Palpite de pole provisória</div><Input value={poleGuess} onChange={setPoleGuess} placeholder="Ex: #80 Mercedes-AMG" className="mt-3 border-white/10 bg-zinc-900 text-white" /><div className="mt-4 rounded-2xl bg-red-700 p-4 text-sm font-semibold leading-5">Palpite atual:<br /><span className="text-lg">{poleGuess}</span></div></div></div></header>
 
-    <nav className="mb-6 flex flex-wrap gap-2">{tabs.map((t) => { const Icon = t.icon; const selected = active === t.id; return <button key={t.id} onClick={() => setActive(t.id)} className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold shadow-sm transition ${selected ? "bg-red-700 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}><Icon size={17} /> {t.label}</button>; })}<button onClick={resetAll} className="ml-auto flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-zinc-600 shadow-sm hover:bg-zinc-50"><RotateCcw size={16} /> Resetar</button></nav>
+    <nav className="mb-6 flex flex-wrap gap-2">
+      {tabs.map((t) => {
+        const Icon = t.icon;
+        const selected = active === t.id;
+        const showRaceBadge = t.id === "racecontrol" && raceUnreadCount > 0;
+
+        return (
+          <button key={t.id} onClick={() => setActive(t.id)} className={`relative flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold shadow-sm transition ${selected ? "bg-red-700 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"}`}>
+            <Icon size={17} />
+            {t.label}
+            {showRaceBadge && <span className="ml-1 rounded-full bg-red-700 px-2 py-0.5 text-xs font-black text-white">{raceUnreadCount}</span>}
+          </button>
+        );
+      })}
+      <button onClick={resetAll} className="ml-auto flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-zinc-600 shadow-sm hover:bg-zinc-50"><RotateCcw size={16} /> Resetar</button>
+    </nav>
+
+    {raceNotice && active !== "racecontrol" && raceUnreadCount > 0 && (
+      <div className="fixed bottom-4 right-4 z-50 w-[min(420px,calc(100vw-2rem))] rounded-2xl border border-red-200 bg-white p-4 shadow-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Badge tone={getRaceMessageTone(raceNotice.type)}>Race Control</Badge>
+              {raceNotice.carNum && <span className="font-black text-red-700">{raceNotice.carNum}</span>}
+              {raceNotice.time && <span className="text-xs font-bold text-zinc-500">{raceNotice.time}</span>}
+            </div>
+            <div className="text-sm font-bold leading-5">{truncateText(raceNotice.translatedMessage, 180)}</div>
+            {raceNotice.translatedMessage !== raceNotice.message && <div className="mt-1 text-xs font-semibold text-zinc-500">Original: {truncateText(raceNotice.message, 150)}</div>}
+          </div>
+          <button onClick={() => setRaceUnreadCount(0)} className="rounded-full bg-zinc-100 px-2 py-1 text-xs font-black text-zinc-600 hover:bg-zinc-200">OK</button>
+        </div>
+        <button onClick={() => setActive("racecontrol")} className="mt-3 w-full rounded-xl bg-zinc-950 px-3 py-2 text-sm font-black text-white">Abrir Race Control</button>
+      </div>
+    )}
 
     {active === "agora" && <section className="space-y-5"><div className="grid gap-5 md:grid-cols-3"><StatBox title="Próxima sessão" value={`${nextSession.day} ${nextSession.br}`} note={nextSession.item} tone="amber" /><StatBox title="Falta para a largada" value={raceStarted ? "Corrida iniciada" : formatDuration(raceStart - now)} note="Largada prevista: sábado 10:00 BRT" tone="red" /><StatBox title={raceFinished ? "Corrida encerrada" : raceStarted ? "Tempo restante" : "Duração da corrida"} value={raceFinished ? "Final" : raceStarted ? formatDuration(raceEnd - now) : "24h"} note={raceStarted && !raceFinished ? `Decorridos: ${formatDuration(now - raceStart)}` : "Cronômetro ativa automaticamente na largada"} tone="green" /></div>{raceStarted && !raceFinished && <CardBox className="p-5"><div className="mb-2 flex items-center justify-between"><h2 className="text-xl font-black">Progresso das 24h</h2><Badge tone="red">{raceProgress.toFixed(1)}%</Badge></div><div className="h-4 overflow-hidden rounded-full bg-zinc-200"><div className="h-full bg-red-700" style={{ width: `${raceProgress}%` }} /></div></CardBox>}<section className="grid gap-5 lg:grid-cols-[1fr_.9fr]"><CardBox className="p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-black">Agenda rápida</h2><Badge tone="blue">BRT</Badge></div><div className="space-y-3">{agenda.map((a, idx) => <div key={idx} className="grid grid-cols-[100px_90px_1fr_auto] items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-3 text-sm"><div className="font-black">{a.day}</div><div className="rounded-xl bg-zinc-900 px-3 py-2 text-center font-black text-white">{a.br}</div><div>{a.item}</div><Badge tone={a.tag === "Corrida" ? "red" : a.tag.includes("Q") ? "amber" : "gray"}>{a.tag}</Badge></div>)}</div></CardBox><CardBox className="p-5"><h2 className="text-2xl font-black">Leitura do momento</h2><div className="mt-4 grid gap-3"><div className="rounded-2xl bg-red-50 p-4"><div className="text-sm font-bold text-red-800">Referência Q1</div><div className="mt-1 text-2xl font-black">#80 — 8:14.957</div><p className="mt-1 text-sm text-zinc-700">Tempo a bater na próxima classificação provisória.</p></div><div className="rounded-2xl bg-zinc-50 p-4"><div className="text-sm font-bold text-zinc-700">Carros no radar</div><p className="mt-1 text-sm leading-6">#80, #1, #3, #99, #911, #64 e #130.</p></div></div></CardBox></section></section>}
 
     {active === "racewatch" && <section className="space-y-5"><div className="grid gap-5 md:grid-cols-4"><StatBox title="Tempo para largada" value={raceStarted ? "Já largou" : formatDuration(raceStart - now)} note="Sábado 10:00 BRT" tone="red" /><StatBox title="Tempo restante" value={raceStarted && !raceFinished ? formatDuration(raceEnd - now) : raceFinished ? "Final" : "24h"} note={raceStarted ? "Cronômetro de corrida" : "Ativa na largada"} tone="green" /><StatBox title="Favoritos" value={String(favoriteCars.length)} note="carros fixados no radar" tone="amber" /><StatBox title="Status críticos" value={String(statusSummary.length)} note="pit/problema/abandono etc." /></div><div className="grid gap-5 lg:grid-cols-[1fr_.8fr]"><CardBox className="p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-black">Meus favoritos ao vivo</h2><Badge tone="green">cruzado com live timing</Badge></div><div className="space-y-3">{favoriteCars.map((c) => { const live = liveByNum[c.num]; return <div key={c.num} className="grid gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-3 md:grid-cols-[90px_1fr_170px_160px]"><div className="text-2xl font-black">{c.num}</div><div><div className="font-black">{c.team}</div><div className="text-sm text-zinc-600">{c.car} • {c.cls}</div></div><div className={`rounded-xl px-3 py-2 text-sm ${live ? "bg-emerald-50 text-emerald-900" : "bg-white text-zinc-500"}`}><div className="text-[10px] font-black uppercase tracking-wider">Live timing</div>{live ? <div className="font-black">P{live.pos || "—"} · {live.time || "sem tempo"}</div> : <div className="font-bold">Sem dados</div>}</div><select value={carStatus[c.num] || "Normal"} onChange={(e) => setCarStatus((old) => ({ ...old, [c.num]: e.target.value }))} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold">{statusOptions.map((s) => <option key={s}>{s}</option>)}</select></div>; })}</div></CardBox><CardBox className="p-5"><h2 className="text-2xl font-black">Eventos rápidos</h2><div className="mt-4 space-y-3"><Input value={eventTitle} onChange={setEventTitle} placeholder="Ex: #911 entrou no pit" /><Input value={eventNote} onChange={setEventNote} placeholder="Detalhe rápido do que aconteceu" /><select value={eventTag} onChange={(e) => setEventTag(e.target.value)} className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold"><option>Observação</option><option>Incidente</option><option>Pit</option><option>Chuva</option><option>Code 60</option><option>Ultrapassagem</option><option>Abandono</option></select><button onClick={addRaceEvent} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><Plus size={17} />Adicionar à timeline</button></div><div className="mt-5 space-y-3">{raceEvents.slice(0, 5).map((e) => <div key={e.id} className="rounded-2xl bg-zinc-50 p-3"><div className="flex items-center justify-between gap-2"><div className="font-black">{e.time} — {e.title}</div><Badge>{e.tag}</Badge></div>{e.note && <p className="mt-1 text-sm text-zinc-600">{e.note}</p>}</div>)}</div></CardBox></div>{statusSummary.length > 0 && <CardBox className="p-5"><h2 className="text-2xl font-black">Carros com atenção</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{statusSummary.map((s) => <div key={s.num} className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-center justify-between"><div className="text-2xl font-black">{s.num}</div><Badge tone={s.status === "Abandonou" || s.status === "Problema" ? "red" : "amber"}>{s.status}</Badge></div><div className="mt-2 font-bold">{s.car?.team}</div><div className="text-sm text-zinc-600">{s.car?.car}</div></div>)}</div></CardBox>}</section>}
 
-    {active === "live" && <section className="space-y-5"><CardBox className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Live Timing</h2><p className="mt-1 text-sm text-zinc-600">Tabela ao vivo alimentada pelo WebSocket. Conecte na aba Auto/API e use esta tela para acompanhar posição, classe, equipe e tempo.</p></div><div className="flex items-center gap-2"><Badge tone={apiStatus === "ok" ? "green" : "gray"}>{apiStatus === "ok" ? "conectado" : "manual"}</Badge><Badge tone="blue">{filteredLiveRows.length}/{sortedQ.length} carros</Badge></div></div><div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]"><div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={liveSearch} onChange={(e) => setLiveSearch(e.target.value)} placeholder="Buscar número, equipe, carro, classe ou tempo..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div><select value={liveClassFilter} onChange={(e) => setLiveClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{liveClasses.map((c) => <option key={c}>{c}</option>)}</select></div></CardBox><div className="grid gap-5 md:grid-cols-4"><StatBox title="Carros no live" value={String(sortedQ.length)} note="linhas recebidas" tone="green" /><StatBox title="Filtrados" value={String(filteredLiveRows.length)} note="resultado atual" tone="blue" /><StatBox title="Classes" value={String(Math.max(liveClasses.length - 1, 0))} note="categorias detectadas" tone="amber" /><StatBox title="Atualizado" value={lastUpdated || "—"} note="último pacote" /></div><CardBox className="p-5"><h2 className="text-2xl font-black">Líderes por classe</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{liveLeadersByClass.slice(0, 16).map(({ cls, row }) => <div key={cls} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-center justify-between"><Badge tone="blue">{cls}</Badge><div className="font-black">P{row.pos || "—"}</div></div><div className="mt-2 text-lg font-black">{row.num}</div><div className="text-sm font-bold">{row.team}</div><div className="text-xs text-zinc-600">{row.car}</div><div className="mt-2 text-sm font-black text-red-700">{row.time || "sem tempo"}</div></div>)}</div></CardBox><CardBox className="overflow-hidden"><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead className="bg-zinc-950 text-left text-white"><tr><th className="px-3 py-3">Pos</th><th className="px-3 py-3">Nº</th><th className="px-3 py-3">Equipe/Piloto</th><th className="px-3 py-3">Carro</th><th className="px-3 py-3">Classe</th><th className="px-3 py-3">Tempo</th><th className="px-3 py-3">Gap</th></tr></thead><tbody>{filteredLiveRows.map((r, idx) => <tr key={`${r.num}-${idx}`} className={`${idx % 2 ? "bg-white" : "bg-zinc-50"} border-b border-zinc-100`}><td className="px-3 py-2 font-black">P{r.pos || idx + 1}</td><td className="px-3 py-2 font-black text-red-700">{r.num}</td><td className="px-3 py-2 font-bold">{r.team || "—"}</td><td className="px-3 py-2 text-zinc-700">{r.car || "—"}</td><td className="px-3 py-2"><Badge tone="gray">{r.cls || "—"}</Badge></td><td className="px-3 py-2 font-black">{r.time || "—"}</td><td className="px-3 py-2 text-zinc-600">{idx === 0 ? "—" : gap(r.time, filteredLiveRows[0]?.time || "")}</td></tr>)}</tbody></table></div></CardBox></section>}
+    {active === "live" && <section className="space-y-5"><CardBox className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Live Timing</h2><p className="mt-1 text-sm text-zinc-600">Tabela em tempo real via WebSocket: sem intervalo fixo, atualiza quando o servidor envia novo pacote.</p></div><div className="flex items-center gap-2"><Badge tone={apiStatus === "ok" ? "green" : "gray"}>{apiStatus === "ok" ? "conectado" : "manual"}</Badge><Badge tone="blue">{filteredLiveRows.length}/{sortedQ.length} carros</Badge>{raceUnreadCount > 0 && <Badge tone="red">{raceUnreadCount} RC novo</Badge>}</div></div><div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]"><div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={liveSearch} onChange={(e) => setLiveSearch(e.target.value)} placeholder="Buscar número, equipe, carro, classe ou tempo..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div><select value={liveClassFilter} onChange={(e) => setLiveClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{liveClasses.map((c) => <option key={c}>{c}</option>)}</select></div></CardBox>{raceNotice && <CardBox className="border-red-200 bg-red-50 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="mb-2 flex flex-wrap items-center gap-2"><Badge tone={getRaceMessageTone(raceNotice.type)}>Race Control</Badge>{raceNotice.carNum && <span className="text-lg font-black text-red-700">{raceNotice.carNum}</span>}{raceNotice.time && <span className="text-sm font-bold text-zinc-500">{raceNotice.time}</span>}</div><div className="text-sm font-bold leading-5">{truncateText(raceNotice.translatedMessage, 220)}</div>{raceNotice.translatedMessage !== raceNotice.message && <div className="mt-1 text-xs font-semibold text-zinc-500">Original: {truncateText(raceNotice.message, 170)}</div>}</div><button onClick={() => setActive("racecontrol")} className="rounded-xl bg-zinc-950 px-3 py-2 text-sm font-black text-white">Ver mensagens</button></div></CardBox>}<div className="grid gap-5 md:grid-cols-4"><StatBox title="Carros no live" value={String(sortedQ.length)} note="linhas recebidas" tone="green" /><StatBox title="Filtrados" value={String(filteredLiveRows.length)} note="resultado atual" tone="blue" /><StatBox title="Race Control" value={String(raceMessages.length)} note={raceUnreadCount ? `${raceUnreadCount} novas` : "sem novas"} tone={raceUnreadCount ? "red" : "amber"} /><StatBox title="Atualizado" value={lastUpdated || "—"} note="último pacote" /></div><CardBox className="p-5"><h2 className="text-2xl font-black">Líderes por classe</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{liveLeadersByClass.slice(0, 16).map(({ cls, row }) => <div key={cls} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-center justify-between"><Badge tone="blue">{cls}</Badge><div className="font-black">P{row.pos || "—"}</div></div><div className="mt-2 text-lg font-black">{row.num}</div><div className="text-sm font-bold">{row.team}</div><div className="text-xs text-zinc-600">{row.car}</div><div className="mt-2 text-sm font-black text-red-700">{row.time || "sem tempo"}</div></div>)}</div></CardBox><CardBox className="overflow-hidden"><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead className="bg-zinc-950 text-left text-white"><tr><th className="px-3 py-3">Pos</th><th className="px-3 py-3">Nº</th><th className="px-3 py-3">Equipe/Piloto</th><th className="px-3 py-3">Carro</th><th className="px-3 py-3">Classe</th><th className="px-3 py-3">Tempo</th><th className="px-3 py-3">Gap</th></tr></thead><tbody>{filteredLiveRows.map((r, idx) => <LiveTimingRow key={`${r.num}-${idx}`} row={r} index={idx} leaderTime={filteredLeaderTime} />)}</tbody></table></div></CardBox></section>}
+
+    {active === "racecontrol" && (
+      <section className="space-y-5">
+        <CardBox className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-black">Race Control</h2>
+              <p className="mt-1 text-sm text-zinc-600">Mensagens oficiais da direção de prova: investigações, Code 60, bandeira técnica, punições e decisões dos comissários.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge tone={apiStatus === "ok" ? "green" : "gray"}>{apiStatus === "ok" ? "conectado" : "manual"}</Badge>
+              <Badge tone="blue">{filteredRaceMessages.length}/{raceMessages.length} mensagens</Badge>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {raceMessageTypes.map((type) => (
+              <button key={type} onClick={() => setRaceMessageFilter(type)} className={`rounded-full px-4 py-2 text-sm font-black ${raceMessageFilter === type ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"}`}>
+                {formatRaceMessageType(type)}
+              </button>
+            ))}
+          </div>
+        </CardBox>
+
+        <div className="grid gap-3">
+          {filteredRaceMessages.length === 0 && (
+            <CardBox className="p-5">
+              <p className="text-sm text-zinc-600">Nenhuma mensagem recebida ainda. Conecte na aba Auto/API ou aguarde o próximo pacote do Race Control.</p>
+            </CardBox>
+          )}
+
+          {filteredRaceMessages.map((msg, idx) => {
+            const car = msg.carNum ? allCars.find((c) => c.num === msg.carNum) : undefined;
+
+            return (
+              <CardBox key={`${msg.time}-${msg.message}-${idx}`} className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={getRaceMessageTone(msg.type)}>{formatRaceMessageType(msg.type)}</Badge>
+                      {msg.time && <span className="text-sm font-bold text-zinc-500">{msg.time}</span>}
+                      {msg.carNum && <span className="text-lg font-black text-red-700">{msg.carNum}</span>}
+                    </div>
+                    <div className="text-base font-bold">{msg.translatedMessage}</div>
+                    {msg.translatedMessage !== msg.message && <div className="text-xs font-semibold text-zinc-500">Original: {msg.message}</div>}
+                    {car && (
+                      <div className="rounded-2xl bg-zinc-50 p-3 text-sm">
+                        <div className="font-black">{car.team}</div>
+                        <div className="text-zinc-600">{car.car} • {car.cls}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardBox>
+            );
+          })}
+        </div>
+      </section>
+    )}
 
     {active === "quali" && <CardBox className="p-5"><h2 className="mb-4 text-2xl font-black">Tabela editável de classificação</h2><div className="overflow-x-auto"><table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm"><thead><tr className="text-left text-xs uppercase text-zinc-500"><th className="px-3">Pos</th><th>Nº</th><th>Classe</th><th>Equipe</th><th>Carro</th><th>Tempo</th><th>Gap</th></tr></thead><tbody>{sortedQ.map((row: any) => <tr key={row._idx} className="rounded-2xl bg-white shadow-sm"><td className="rounded-l-2xl px-3 py-2 font-black">{row.pos}</td><td className="py-2"><Input value={row.num} onChange={(v) => updateRow(row._idx, "num", v)} /></td><td className="py-2"><Input value={row.cls || ""} onChange={(v) => updateRow(row._idx, "cls", v)} /></td><td className="py-2"><Input value={row.team} onChange={(v) => updateRow(row._idx, "team", v)} /></td><td className="py-2"><Input value={row.car} onChange={(v) => updateRow(row._idx, "car", v)} /></td><td className="py-2"><Input value={row.time} onChange={(v) => updateRow(row._idx, "time", v)} placeholder="8:14.957" /></td><td className="rounded-r-2xl py-2 font-black text-red-700">{gap(row.time, bestTime)}</td></tr>)}</tbody></table></div></CardBox>}
 
-    {active === "auto" && <section className="grid gap-5 lg:grid-cols-[1fr_.8fr]"><CardBox className="p-5"><div className="mb-4 flex items-center gap-3"><Wifi className="text-red-700" /><h2 className="text-2xl font-black">Busca automática / API</h2></div><p className="mb-4 text-sm leading-6 text-zinc-600">Cole uma URL que retorne JSON ou use o conector WebSocket do live timing.</p><Input value={apiUrl} onChange={setApiUrl} placeholder="https://seu-endpoint.com/timing.json" /><div className="mt-4 grid gap-3 md:grid-cols-[1fr_140px]"><label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 text-sm font-bold"><input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="h-5 w-5 accent-red-700" />Atualizar JSON automaticamente</label><Input value={String(refreshSeconds)} onChange={(v) => setRefreshSeconds(Number(v) || 30)} /></div><div className="mt-4 flex flex-wrap gap-3"><button onClick={fetchApi} className="flex items-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><RefreshCcw size={16} />Buscar JSON agora</button><a href="https://www.24h-rennen.de/en/live-en/" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white"><ExternalLink size={16} />Live oficial</a></div>{apiError && <div className="mt-4 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-800">Erro: {apiError}</div>}</CardBox><CardBox className="p-5"><h3 className="text-xl font-black">Status</h3><div className="mt-4 rounded-2xl bg-zinc-50 p-4"><div className="flex items-center gap-2 font-black">{apiStatus === "ok" ? <Wifi size={18} className="text-emerald-700" /> : apiStatus === "erro" ? <WifiOff size={18} className="text-red-700" /> : <Timer size={18} className="text-zinc-600" />}{apiStatus === "ok" ? "Conectado" : apiStatus === "buscando" ? "Buscando..." : apiStatus === "erro" ? "Erro na API" : "Modo manual"}</div><p className="mt-2 text-sm text-zinc-600">Última atualização: {lastUpdated || "ainda não buscou"}</p></div></CardBox><CardBox className="p-5 lg:col-span-2"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Live Timing WebSocket</h2><p className="mt-1 text-sm text-zinc-600">Conecta em wss://livetiming.azurewebsites.net/ e assina eventPid [0,4].</p></div><Badge tone={liveStatus === "conectado" ? "green" : liveStatus === "erro" ? "red" : liveStatus === "conectando" ? "amber" : "gray"}>{liveStatus}</Badge></div><div className="grid gap-3 md:grid-cols-[180px_1fr_150px_150px]"><Input value={liveEventId} onChange={setLiveEventId} placeholder="Event ID" /><div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm"><b>Evento:</b> {liveMeta.heat || "—"}<br /><span className="text-zinc-600">Sessão: {liveMeta.session || "—"} • Pista: {liveMeta.track || "—"}</span></div><button onClick={connectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><Wifi size={17} />Conectar</button><button onClick={disconnectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white"><WifiOff size={17} />Desconectar</button></div><div className="mt-4 grid gap-3 md:grid-cols-4"><StatBox title="Carros recebidos" value={String(liveMeta.cars || 0)} note="do pacote RESULT" tone="blue" /><StatBox title="Estado da pista" value={liveTrackState} note="PID 4" tone="amber" /><StatBox title="Atualizado" value={liveMeta.updated || "—"} note="último pacote" /><StatBox title="Tabela" value={String(qRows.length)} note="linhas carregadas" tone="green" /></div><div className="mt-4 rounded-2xl bg-zinc-50 p-4"><div className="mb-2 text-sm font-black uppercase tracking-wider text-zinc-500">Log da conexão</div><div className="space-y-1 text-sm text-zinc-700">{liveLog.length ? liveLog.map((l, i) => <div key={i}>{l}</div>) : <div>Nenhum evento ainda.</div>}</div></div></CardBox></section>}
+    {active === "auto" && <section className="grid gap-5 lg:grid-cols-[1fr_.8fr]"><CardBox className="p-5"><div className="mb-4 flex items-center gap-3"><Wifi className="text-red-700" /><h2 className="text-2xl font-black">Busca automática / API</h2></div><p className="mb-4 text-sm leading-6 text-zinc-600">Cole uma URL que retorne JSON ou use o conector WebSocket do live timing.</p><Input value={apiUrl} onChange={setApiUrl} placeholder="https://seu-endpoint.com/timing.json" /><div className="mt-4 grid gap-3 md:grid-cols-[1fr_140px]"><label className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4 text-sm font-bold"><input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="h-5 w-5 accent-red-700" />Atualizar JSON automaticamente</label><Input value={String(refreshSeconds)} onChange={(v) => setRefreshSeconds(Number(v) || 30)} /></div><div className="mt-4 flex flex-wrap gap-3"><button onClick={fetchApi} className="flex items-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><RefreshCcw size={16} />Buscar JSON agora</button><a href="https://www.24h-rennen.de/en/live-en/" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white"><ExternalLink size={16} />Live oficial</a></div>{apiError && <div className="mt-4 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-800">Erro: {apiError}</div>}</CardBox><CardBox className="p-5"><h3 className="text-xl font-black">Status</h3><div className="mt-4 rounded-2xl bg-zinc-50 p-4"><div className="flex items-center gap-2 font-black">{apiStatus === "ok" ? <Wifi size={18} className="text-emerald-700" /> : apiStatus === "erro" ? <WifiOff size={18} className="text-red-700" /> : <Timer size={18} className="text-zinc-600" />}{apiStatus === "ok" ? "Conectado" : apiStatus === "buscando" ? "Buscando..." : apiStatus === "erro" ? "Erro na API" : "Modo manual"}</div><p className="mt-2 text-sm text-zinc-600">Última atualização: {lastUpdated || "ainda não buscou"}</p></div></CardBox><CardBox className="p-5 lg:col-span-2"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Live Timing WebSocket</h2><p className="mt-1 text-sm text-zinc-600">Conecta em wss://livetiming.azurewebsites.net/ e assina eventPid [0,3,4,7].</p></div><Badge tone={liveStatus === "conectado" ? "green" : liveStatus === "erro" ? "red" : liveStatus === "conectando" ? "amber" : "gray"}>{liveStatus}</Badge></div><div className="grid gap-3 md:grid-cols-[180px_1fr_150px_150px]"><Input value={liveEventId} onChange={setLiveEventId} placeholder="Event ID" /><div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm"><b>Evento:</b> {liveMeta.heat || "—"}<br /><span className="text-zinc-600">Sessão: {liveMeta.session || "—"} • Pista: {liveMeta.track || "—"}</span></div><button onClick={connectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><Wifi size={17} />Conectar</button><button onClick={disconnectLiveTiming} className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white"><WifiOff size={17} />Desconectar</button></div><div className="mt-4 grid gap-3 md:grid-cols-5"><StatBox title="Carros recebidos" value={String(liveMeta.cars || 0)} note="do pacote RESULT" tone="blue" /><StatBox title="Race Control" value={String(raceMessages.length)} note="mensagens PID 3" tone="red" /><StatBox title="Estado da pista" value={liveTrackState} note="PID 4" tone="amber" /><StatBox title="Atualizado" value={liveMeta.updated || "—"} note="último pacote" /><StatBox title="Tabela" value={String(qRows.length)} note="linhas carregadas" tone="green" /></div><div className="mt-4 rounded-2xl bg-zinc-50 p-4"><div className="mb-2 text-sm font-black uppercase tracking-wider text-zinc-500">Log da conexão</div><div className="space-y-1 text-sm text-zinc-700">{liveLog.length ? liveLog.map((l, i) => <div key={i}>{l}</div>) : <div>Nenhum evento ainda.</div>}</div></div></CardBox></section>}
 
-    {active === "carros" && <section className="space-y-5"><CardBox className="p-5"><div className="grid gap-4 lg:grid-cols-[1fr_180px_180px]"><div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={carSearch} onChange={(e) => setCarSearch(e.target.value)} placeholder="Buscar por número, equipe, carro, classe..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div><select value={carClassFilter} onChange={(e) => setCarClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{classOptions.map((c) => <option key={c}>{c}</option>)}</select><select value={carGroupFilter} onChange={(e) => setCarGroupFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{groupOptions.map((g) => <option key={g}>{g}</option>)}</select></div><div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros visíveis</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">161 cards</Badge></div></CardBox><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredCars.map((c) => { const isChecked = !!checked[c.num]; return <CardBox key={`${c.num}-${c.team}`} className="overflow-hidden transition"><div className="p-4"><div className="relative"><PhotoBox src={c.photo} label={`${c.num} ${c.car}`} /><button onClick={() => toggleFavorite(c.num)} className={`absolute right-2 top-2 rounded-full p-2 shadow ${favorites[c.num] ? "bg-amber-400 text-zinc-950" : "bg-white/90 text-zinc-500"}`} title="Favoritar"><Star size={18} fill={favorites[c.num] ? "currentColor" : "none"} /></button></div></div><div className="flex items-center justify-between border-y border-zinc-100 bg-zinc-50 p-4"><div className="text-3xl font-black">{c.num}</div><div className="flex gap-2"><Badge tone={c.group === "Favorito" ? "red" : c.group === "Surpresa" ? "amber" : c.group === "Personagem" ? "green" : "gray"}>{c.group}</Badge><Badge>{c.cls || "—"}</Badge></div></div><div className="p-4"><div className="font-black">{c.team}</div><div className="mt-1 text-sm text-zinc-600">{c.car}</div><p className="mt-3 text-sm leading-6">{c.why}</p>{(() => { const live = liveByNum[c.num]; return <div className={`mt-4 rounded-2xl p-3 text-sm ${live ? "bg-emerald-50 text-emerald-950" : "bg-zinc-50 text-zinc-500"}`}><div className="text-[10px] font-black uppercase tracking-wider">Live timing</div>{live ? <div className="mt-1 flex flex-wrap items-center gap-2"><Badge tone="green">P{live.pos || "—"}</Badge><span className="font-black">{live.time || "sem tempo"}</span><span className="text-xs">{live.cls || c.cls}</span></div> : <div className="mt-1 font-bold">Sem dados nesta sessão</div>}</div>; })()}<select value={carStatus[c.num] || "Normal"} onChange={(e) => setCarStatus((old) => ({ ...old, [c.num]: e.target.value }))} className="mt-4 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold">{statusOptions.map((s) => <option key={s}>{s}</option>)}</select></div></CardBox>; })}</div></section>}
+    {active === "carros" && <section className="space-y-5"><CardBox className="p-5"><div className="grid gap-4 lg:grid-cols-[1fr_180px_180px]"><div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={carSearch} onChange={(e) => setCarSearch(e.target.value)} placeholder="Buscar por número, equipe, carro, classe..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div><select value={carClassFilter} onChange={(e) => setCarClassFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{classOptions.map((c) => <option key={c}>{c}</option>)}</select><select value={carGroupFilter} onChange={(e) => setCarGroupFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{groupOptions.map((g) => <option key={g}>{g}</option>)}</select></div><div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-600"><Badge tone="red">{filteredCars.length} carros visíveis</Badge><Badge tone="amber">{favoriteCars.length} favoritos</Badge><Badge tone="blue">161 cards</Badge></div></CardBox><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredCars.map((c) => <CardBox key={`${c.num}-${c.team}`} className="overflow-hidden transition"><div className="p-4"><div className="relative"><PhotoBox src={c.photo} label={`${c.num} ${c.car}`} /><button onClick={() => toggleFavorite(c.num)} className={`absolute right-2 top-2 rounded-full p-2 shadow ${favorites[c.num] ? "bg-amber-400 text-zinc-950" : "bg-white/90 text-zinc-500"}`} title="Favoritar"><Star size={18} fill={favorites[c.num] ? "currentColor" : "none"} /></button></div></div><div className="flex items-center justify-between border-y border-zinc-100 bg-zinc-50 p-4"><div className="text-3xl font-black">{c.num}</div><div className="flex gap-2"><Badge tone={c.group === "Favorito" ? "red" : c.group === "Surpresa" ? "amber" : c.group === "Personagem" ? "green" : "gray"}>{c.group}</Badge><Badge>{c.cls || "—"}</Badge></div></div><div className="p-4"><div className="font-black">{c.team}</div><div className="mt-1 text-sm text-zinc-600">{c.car}</div><p className="mt-3 text-sm leading-6">{c.why}</p>{(() => { const live = liveByNum[c.num]; return <div className={`mt-4 rounded-2xl p-3 text-sm ${live ? "bg-emerald-50 text-emerald-950" : "bg-zinc-50 text-zinc-500"}`}><div className="text-[10px] font-black uppercase tracking-wider">Live timing</div>{live ? <div className="mt-1 flex flex-wrap items-center gap-2"><Badge tone="green">P{live.pos || "—"}</Badge><span className="font-black">{live.time || "sem tempo"}</span><span className="text-xs">{live.cls || c.cls}</span></div> : <div className="mt-1 font-bold">Sem dados nesta sessão</div>}</div>; })()}<select value={carStatus[c.num] || "Normal"} onChange={(e) => setCarStatus((old) => ({ ...old, [c.num]: e.target.value }))} className="mt-4 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold">{statusOptions.map((s) => <option key={s}>{s}</option>)}</select></div></CardBox>)}</div></section>}
 
     {active === "pilotos" && <section className="space-y-5"><CardBox className="p-5"><div className="grid gap-4 lg:grid-cols-[1fr_260px]"><div className="relative"><Search className="absolute left-3 top-3 text-zinc-400" size={18} /><input value={driverSearch} onChange={(e) => setDriverSearch(e.target.value)} placeholder="Buscar por piloto, equipe, carro, número ou histórico..." className="w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-red-600" /></div><select value={driverFilter} onChange={(e) => setDriverFilter(e.target.value)} className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-red-600">{driverTeams.map((t) => <option key={t}>{t}</option>)}</select></div><div className="mt-4 flex flex-wrap items-center gap-2"><Badge tone="red">{filteredDrivers.length} pilotos em destaque</Badge><Badge tone="gray">histórico + carro + equipe</Badge></div></CardBox><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filteredDrivers.map((p) => <CardBox key={`${p.name}-${p.carNum}`} className="overflow-hidden"><div className="border-b border-zinc-100 bg-zinc-950 p-5 text-white"><div className="flex items-start justify-between gap-3"><div><div className="text-2xl font-black">{p.name}</div><div className="mt-1 text-sm text-zinc-300">{p.nationality} • {p.role}</div></div><Badge tone="red">{p.carNum}</Badge></div></div><div className="space-y-3 p-5"><div className="rounded-2xl bg-zinc-50 p-4"><div className="text-xs font-black uppercase tracking-wider text-zinc-500">Carro e equipe</div><div className="mt-1 font-black">{p.team}</div><div className="mt-1 text-sm text-zinc-600">{p.car}</div></div><div className="rounded-2xl bg-amber-50 p-4"><div className="text-xs font-black uppercase tracking-wider text-amber-800">Já ganhou?</div><div className="mt-1 text-sm font-bold text-zinc-800">{p.won24h}</div></div><div><div className="text-sm font-black text-red-700">Mini histórico</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.history}</p></div><div><div className="text-sm font-black text-zinc-900">Por que acompanhar</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.watch}</p></div></div></CardBox>)}</div></section>}
 
