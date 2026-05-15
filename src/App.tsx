@@ -4,6 +4,8 @@ import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiO
 const STORAGE_KEY = "nurburgring-2026-companion-v6-race-watch";
 const RACE_START_BRT = "2026-05-16T10:00:00-03:00";
 const RACE_END_BRT = "2026-05-17T10:00:00-03:00";
+const QUALIFYING_FREEZE_BRT = "2026-05-15T10:00:00-03:00";
+
 
 type QRow = { pos?: number; num: string; team: string; car: string; time: string; cls: string; change?: number; pitStops?: string; pitState?: string; lastLap?: string };
 type GridCar = { num: string; cls: string; team: string; car: string; why: string; group: string; photo: string };
@@ -2220,12 +2222,6 @@ function getRaceCardClass(tone: string) {
   return classes[tone] || classes.gray;
 }
 
-function getManualStatusTone(status: string) {
-  if (status === "Abandonou" || status === "Problema") return "red";
-  if (status === "No pit" || status === "Em recuperação" || status === "Defendendo") return "amber";
-  if (status === "Atacando") return "green";
-  return "gray";
-}
 
 function formatRaceMessageType(type: string) {
   const labels: Record<string, string> = {
@@ -2357,6 +2353,30 @@ function formatDuration(ms: number) {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${String(d).padStart(2, "0")}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+}
+
+
+function sortTimingRows(rows: QRow[]) {
+  return [...rows]
+    .map((r, idx) => {
+      const livePos = Number(r.pos);
+      return {
+        ...r,
+        _idx: idx,
+        sec: timeToSec(r.time),
+        livePos: Number.isFinite(livePos) && livePos > 0 ? livePos : undefined
+      };
+    })
+    .sort((a, b) => {
+      const aPos = a.livePos ?? Number.POSITIVE_INFINITY;
+      const bPos = b.livePos ?? Number.POSITIVE_INFINITY;
+      if (aPos !== bPos) return aPos - bPos;
+      const aSec = a.sec ?? Number.POSITIVE_INFINITY;
+      const bSec = b.sec ?? Number.POSITIVE_INFINITY;
+      if (aSec !== bSec) return aSec - bSec;
+      return a._idx - b._idx;
+    })
+    .map((r, i) => ({ ...r, pos: r.livePos ?? i + 1 }));
 }
 
 function Badge({ children, tone = "gray" }: { children: React.ReactNode; tone?: string }) {
@@ -2526,10 +2546,13 @@ function DriverAvatar({ driver }: { driver: DriverCard }) {
 export default function NurburgringCompanion() {
   const [active, setActive] = useState("agora");
   const [qRows, setQRows] = useState<QRow[]>(q1Seed);
+  const [qualifyingRows, setQualifyingRows] = useState<QRow[]>(q1Seed);
+  const [qualifyingFrozenAt, setQualifyingFrozenAt] = useState("");
+  const [finalRows, setFinalRows] = useState<QRow[]>([]);
+  const [finalSnapshotAt, setFinalSnapshotAt] = useState("");
   const [allCars, setAllCars] = useState<GridCar[]>(carSeed);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [favorites, setFavorites] = useState<Record<string, boolean>>({ "#80": true, "#3": true, "#911": true, "#1": true, "#99": true, "#64": true, "#67": true, "#300": true, "#632": true });
-  const [carStatus, setCarStatus] = useState<Record<string, string>>({});
   const [phases, setPhases] = useState<Phase[]>(phasesSeed);
   const [raceEvents, setRaceEvents] = useState<RaceEvent[]>(raceEventsSeed);
   const [eventTitle, setEventTitle] = useState("");
@@ -2576,10 +2599,13 @@ export default function NurburgringCompanion() {
       if (raw) {
         const parsed = JSON.parse(raw);
         setQRows(parsed.qRows || q1Seed);
+        setQualifyingRows(parsed.qualifyingRows || parsed.qRows || q1Seed);
+        setQualifyingFrozenAt(parsed.qualifyingFrozenAt || "");
+        setFinalRows(parsed.finalRows || []);
+        setFinalSnapshotAt(parsed.finalSnapshotAt || "");
         setAllCars(parsed.allCars || carSeed);
         setChecked(parsed.checked || {});
         setFavorites(parsed.favorites || { "#80": true, "#3": true, "#911": true, "#1": true, "#99": true, "#64": true, "#67": true, "#300": true, "#632": true });
-        setCarStatus(parsed.carStatus || {});
         setPhases(parsed.phases || phasesSeed);
         setRaceEvents(parsed.raceEvents || raceEventsSeed);
         setPoleGuess(parsed.poleGuess || "#80 Mercedes-AMG Team RAVENOL");
@@ -2591,8 +2617,8 @@ export default function NurburgringCompanion() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ qRows, allCars, checked, favorites, carStatus, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds }));
-  }, [qRows, allCars, checked, favorites, carStatus, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds }));
+  }, [qRows, qualifyingRows, qualifyingFrozenAt, finalRows, finalSnapshotAt, allCars, checked, favorites, phases, raceEvents, poleGuess, apiUrl, autoRefresh, refreshSeconds]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -2783,34 +2809,34 @@ export default function NurburgringCompanion() {
     return () => clearInterval(id);
   }, [autoRefresh, apiUrl, refreshSeconds]);
 
-  const sortedQ = useMemo(() => {
-    return [...qRows]
-      .map((r, idx) => {
-        const livePos = Number(r.pos);
-        return {
-          ...r,
-          _idx: idx,
-          sec: timeToSec(r.time),
-          livePos: Number.isFinite(livePos) && livePos > 0 ? livePos : undefined
-        };
-      })
-      .sort((a, b) => {
-        const aPos = a.livePos ?? Number.POSITIVE_INFINITY;
-        const bPos = b.livePos ?? Number.POSITIVE_INFINITY;
-        if (aPos !== bPos) return aPos - bPos;
-        const aSec = a.sec ?? Number.POSITIVE_INFINITY;
-        const bSec = b.sec ?? Number.POSITIVE_INFINITY;
-        if (aSec !== bSec) return aSec - bSec;
-        return a._idx - b._idx;
-      })
-      .map((r, i) => ({ ...r, pos: r.livePos ?? i + 1 }));
-  }, [qRows]);
-  const bestTime = sortedQ.find((r) => r.time)?.time || "";
+  const sortedQ = useMemo(() => sortTimingRows(qRows), [qRows]);
+  const qualifyingSortedRows = useMemo(() => sortTimingRows(qualifyingRows), [qualifyingRows]);
+  const finalSortedRows = useMemo(() => sortTimingRows(finalRows), [finalRows]);
+  const bestQualifyingTime = qualifyingSortedRows.find((r) => r.time)?.time || "";
   const raceStart = new Date(RACE_START_BRT).getTime();
   const raceEnd = new Date(RACE_END_BRT).getTime();
   const raceStarted = now >= raceStart;
   const raceFinished = now >= raceEnd;
+  const qualifyingFreezeTime = new Date(QUALIFYING_FREEZE_BRT).getTime();
+  const qualifyingFrozen = now >= qualifyingFreezeTime;
   const raceProgress = Math.min(100, Math.max(0, ((now - raceStart) / (raceEnd - raceStart)) * 100));
+
+  useEffect(() => {
+    if (!qualifyingFrozen && sortedQ.length) {
+      setQualifyingRows(sortedQ.map(({ _idx, sec, livePos, ...row }: any) => row));
+      setQualifyingFrozenAt("");
+    }
+    if (qualifyingFrozen && !qualifyingFrozenAt) {
+      setQualifyingFrozenAt(new Date().toLocaleString("pt-BR"));
+    }
+  }, [qualifyingFrozen, qualifyingFrozenAt, sortedQ]);
+
+  useEffect(() => {
+    if (raceFinished && !finalSnapshotAt && sortedQ.length) {
+      setFinalRows(sortedQ.map(({ _idx, sec, livePos, ...row }: any) => row));
+      setFinalSnapshotAt(new Date().toLocaleString("pt-BR"));
+    }
+  }, [raceFinished, finalSnapshotAt, sortedQ]);
   const currentSession = useMemo(() => agenda.find((a) => getAgendaStatus(a, now) === "Agora") || null, [now]);
   const nextSession = useMemo(() => agenda.find((a) => new Date(a.iso).getTime() > now) || agenda[agenda.length - 1], [now]);
   const agendaWithStatus = useMemo(() => agenda.map((a) => ({ ...a, status: getAgendaStatus(a, now) })), [now]);
@@ -2933,10 +2959,6 @@ export default function NurburgringCompanion() {
     });
   }, [favoriteCars, raceGroupByNum, liveByNum]);
   const favoriteAlertCount = useMemo(() => favoriteCars.filter((car) => raceGroupByNum[car.num]?.urgent).length, [favoriteCars, raceGroupByNum]);
-  const statusSummary = useMemo(() => {
-    const entries = Object.entries(carStatus).filter(([, v]) => v && v !== "Normal");
-    return entries.map(([num, status]) => ({ num, status, car: allCars.find((c) => c.num === num) })).filter((x) => x.car);
-  }, [carStatus, allCars]);
   const driversByCarNum = useMemo(() => {
     const map: Record<string, DriverCard[]> = {};
     allDriversSeed.forEach((driver) => {
@@ -2972,12 +2994,31 @@ export default function NurburgringCompanion() {
   const driverPageStart = filteredDriverGroups.length ? (driversPage - 1) * driverGroupsPerPage + 1 : 0;
   const driverPageEnd = Math.min(driversPage * driverGroupsPerPage, filteredDriverGroups.length);
 
+  const finalResultRows = finalSortedRows.length ? finalSortedRows : sortedQ;
+  const finalWinner = finalResultRows[0];
+  const finalFavoriteRows = useMemo(() => {
+    return favoriteCars
+      .map((car) => ({ car, result: finalResultRows.find((row) => row.num === car.num) }))
+      .sort((a, b) => Number(a.result?.pos || 9999) - Number(b.result?.pos || 9999));
+  }, [favoriteCars, finalResultRows]);
+  const automaticRaceSummary = useMemo(() => {
+    if (!raceFinished) return "Resumo final será liberado automaticamente quando a corrida terminar.";
+    const winnerText = finalWinner ? `Vencedor provisório: ${finalWinner.num} — ${finalWinner.team} (${finalWinner.car}), P${finalWinner.pos}.` : "Ainda não há resultado final salvo.";
+    const bestFavorite = finalFavoriteRows.find((item) => item.result);
+    const favoriteText = bestFavorite?.result ? `Melhor favorito acompanhado: ${bestFavorite.car.num} — ${bestFavorite.car.team}, terminou em P${bestFavorite.result.pos}.` : "Nenhum favorito apareceu no snapshot final.";
+    const rcText = `Race Control registrou ${raceMessages.length} mensagens no app, com ${raceStats.attention} carros em atenção.`;
+    return `${winnerText} ${favoriteText} ${rcText}`;
+  }, [raceFinished, finalWinner, finalFavoriteRows, raceMessages.length, raceStats.attention]);
+
   const resetAll = () => {
     setQRows(q1Seed);
+    setQualifyingRows(q1Seed);
+    setQualifyingFrozenAt("");
+    setFinalRows([]);
+    setFinalSnapshotAt("");
     setAllCars(carSeed);
     setChecked({});
     setFavorites({ "#80": true, "#3": true, "#911": true, "#1": true, "#99": true, "#64": true, "#67": true, "#300": true, "#632": true });
-    setCarStatus({});
     setPhases(phasesSeed);
     setRaceEvents(raceEventsSeed);
     setPoleGuess("#80 Mercedes-AMG Team RAVENOL");
@@ -2992,7 +3033,6 @@ export default function NurburgringCompanion() {
     raceMessageKeysRef.current = new Set();
   };
 
-  const updateRow = (index: number, key: keyof QRow, value: string) => setQRows((rows) => rows.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
   const setCarChecked = (num: string, value: boolean) => setChecked((old) => ({ ...old, [num]: value }));
   const toggleFavorite = (num: string) => setFavorites((old) => ({ ...old, [num]: !old[num] }));
   const addRaceEvent = () => {
@@ -3114,6 +3154,27 @@ export default function NurburgringCompanion() {
           </div>
         </CardBox>
 
+        {raceFinished && (
+          <CardBox className="border-emerald-200 bg-emerald-50 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="mb-2 flex flex-wrap gap-2"><Badge tone="green">Pós-corrida</Badge><Badge tone="gray">snapshot final</Badge></div>
+                <h2 className="text-2xl font-black">Resumo final automático</h2>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-zinc-700">{automaticRaceSummary}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 text-right">
+                <div className="text-xs font-black uppercase tracking-wider text-zinc-500">Snapshot salvo</div>
+                <div className="mt-1 text-lg font-black">{finalSnapshotAt || "aguardando último pacote"}</div>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <StatBox title="Vencedor provisório" value={finalWinner?.num || "—"} note={finalWinner ? `${finalWinner.team} · ${finalWinner.car}` : "sem dados finais"} tone="green" />
+              <StatBox title="Carros no snapshot" value={String(finalResultRows.length)} note="último resultado salvo" tone="blue" />
+              <StatBox title="Mensagens RC" value={String(raceMessages.length)} note="registradas no app" tone="amber" />
+            </div>
+          </CardBox>
+        )}
+
         <CardBox className="p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -3126,8 +3187,7 @@ export default function NurburgringCompanion() {
             {favoriteCockpitCars.slice(0, 10).map((c) => {
               const live = liveByNum[c.num];
               const group = raceGroupByNum[c.num];
-              const status = carStatus[c.num] || "Normal";
-              const tone = group?.tone || getManualStatusTone(status);
+              const tone = group?.tone || "gray";
               return (
                 <div key={c.num} className={`rounded-3xl border p-4 ${getRaceCardClass(tone)}`}>
                   <div className="flex items-start justify-between gap-2">
@@ -3142,7 +3202,6 @@ export default function NurburgringCompanion() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {live?.time && <Badge tone="dark">{live.time}</Badge>}
                     {group && <Badge tone={group.tone}>RC</Badge>}
-                    {status !== "Normal" && <Badge tone={getManualStatusTone(status)}>{status}</Badge>}
                   </div>
                 </div>
               );
@@ -3173,8 +3232,7 @@ export default function NurburgringCompanion() {
                   {favoriteCockpitCars.map((c) => {
                     const live = liveByNum[c.num];
                     const group = raceGroupByNum[c.num];
-                    const status = carStatus[c.num] || "Normal";
-                    const tone = group?.tone || getManualStatusTone(status);
+                    const tone = group?.tone || "gray";
                     const rowClass = tone === "red" ? "bg-red-50" : tone === "amber" ? "bg-amber-50" : tone === "green" ? "bg-emerald-50" : tone === "blue" ? "bg-blue-50" : "bg-white";
 
                     return (
@@ -3216,9 +3274,6 @@ export default function NurburgringCompanion() {
 
           </div>
         </div>
-
-
-        {statusSummary.length > 0 && <CardBox className="p-5"><h2 className="text-2xl font-black">Carros com atenção manual</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{statusSummary.map((s) => <div key={s.num} className={`rounded-2xl border p-4 ${getRaceCardClass(getManualStatusTone(s.status))}`}><div className="flex items-center justify-between"><div className="text-2xl font-black">{s.num}</div><Badge tone={getManualStatusTone(s.status)}>{s.status}</Badge></div><div className="mt-2 font-bold">{s.car?.team}</div><div className="text-sm text-zinc-600">{s.car?.car}</div></div>)}</div></CardBox>}
       </section>
     )}
 
@@ -3317,43 +3372,114 @@ export default function NurburgringCompanion() {
           </CardBox>
         )}
 
-        <div className="grid gap-3">
-          {filteredRaceMessages.length === 0 && (
-            <CardBox className="p-5">
-              <p className="text-sm text-zinc-600">Nenhuma mensagem recebida ainda. Conecte na aba Auto/API ou aguarde o próximo pacote do Race Control.</p>
-            </CardBox>
-          )}
+        <CardBox className="p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-black">Mensagens completas</h3>
+              <p className="mt-1 text-sm text-zinc-600">Lista geral do Race Control.</p>
+            </div>
+            <Badge tone="blue">{filteredRaceMessages.length} mensagens</Badge>
+          </div>
 
-          {filteredRaceMessages.map((msg, idx) => {
-            const car = msg.carNum ? allCars.find((c) => c.num === msg.carNum) : undefined;
+          {filteredRaceMessages.length === 0 ? (
+            <div className="rounded-2xl bg-zinc-50 p-5">
+              <p className="text-sm text-zinc-600">Nenhuma mensagem recebida ainda. Conecte na aba Config ou aguarde o próximo pacote do Race Control.</p>
+            </div>
+          ) : (
+            <div className="max-h-[620px] space-y-3 overflow-y-auto pr-2">
+              {filteredRaceMessages.map((msg, idx) => {
+                const car = msg.carNum ? allCars.find((c) => c.num === msg.carNum) : undefined;
 
-            return (
-              <CardBox key={`${msg.time}-${msg.message}-${idx}`} className="p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={getRaceMessageTone(msg.type)}>{formatRaceMessageType(msg.type)}</Badge>
-                      {msg.time && <span className="text-sm font-bold text-zinc-500">{msg.time}</span>}
-                      {msg.carNum && <span className="text-lg font-black text-red-700">{msg.carNum}</span>}
-                    </div>
-                    <div className="text-base font-bold">{msg.translatedMessage}</div>
-                    {msg.translatedMessage !== msg.message && <div className="text-xs font-semibold text-zinc-500">Original: {msg.message}</div>}
-                    {car && (
-                      <div className="rounded-2xl bg-zinc-50 p-3 text-sm">
-                        <div className="font-black">{car.team}</div>
-                        <div className="text-zinc-600">{car.car} • {car.cls}</div>
+                return (
+                  <div key={`${msg.time}-${msg.message}-${idx}`} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone={getRaceMessageTone(msg.type)}>{formatRaceMessageType(msg.type)}</Badge>
+                          {msg.time && <span className="text-sm font-bold text-zinc-500">{msg.time}</span>}
+                          {msg.carNum && <span className="text-lg font-black text-red-700">{msg.carNum}</span>}
+                        </div>
+                        <div className="text-base font-bold">{msg.translatedMessage}</div>
+                        {msg.translatedMessage !== msg.message && <div className="text-xs font-semibold text-zinc-500">Original: {msg.message}</div>}
+                        {car && (
+                          <div className="rounded-2xl bg-white p-3 text-sm shadow-sm">
+                            <div className="font-black">{car.team}</div>
+                            <div className="text-zinc-600">{car.car} • {car.cls}</div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </CardBox>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+        </CardBox>
       </section>
     )}
 
-    {active === "quali" && <CardBox className="p-5"><h2 className="mb-4 text-2xl font-black">Tabela editável de classificação</h2><div className="overflow-x-auto"><table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm"><thead><tr className="text-left text-xs uppercase text-zinc-500"><th className="px-3">Pos</th><th>Nº</th><th>Classe</th><th>Equipe</th><th>Carro</th><th>Tempo</th><th>Gap</th></tr></thead><tbody>{sortedQ.map((row: any) => <tr key={row._idx} className="rounded-2xl bg-white shadow-sm"><td className="rounded-l-2xl px-3 py-2 font-black">{row.pos}</td><td className="py-2"><Input value={row.num} onChange={(v) => updateRow(row._idx, "num", v)} /></td><td className="py-2"><Input value={row.cls || ""} onChange={(v) => updateRow(row._idx, "cls", v)} /></td><td className="py-2"><Input value={row.team} onChange={(v) => updateRow(row._idx, "team", v)} /></td><td className="py-2"><Input value={row.car} onChange={(v) => updateRow(row._idx, "car", v)} /></td><td className="py-2"><Input value={row.time} onChange={(v) => updateRow(row._idx, "time", v)} placeholder="8:14.957" /></td><td className="rounded-r-2xl py-2 font-black text-red-700">{gap(row.time, bestTime)}</td></tr>)}</tbody></table></div></CardBox>}
+    {active === "quali" && (
+      <section className="space-y-5">
+        <CardBox className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="mb-2 flex flex-wrap gap-2">
+                <Badge tone={qualifyingFrozen ? "green" : "amber"}>{qualifyingFrozen ? "Classificação congelada" : "Atualizando pelo Live Timing"}</Badge>
+                <Badge tone="blue">Freeze: 15/05 10:00 BRT</Badge>
+                {liveMeta.heat && <Badge tone="gray">{liveMeta.heat}</Badge>}
+              </div>
+              <h2 className="text-2xl font-black">GRID &gt; Qualifying automático</h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-600">
+                Esta tela acompanha o Live Timing durante as sessões de classificação e congela automaticamente após o horário final do quali.
+                Assim, quando a corrida começar, ela vira a referência do grid/classificação sem ser alterada pelo ritmo de corrida.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-zinc-50 p-4 text-right">
+              <div className="text-xs font-black uppercase tracking-wider text-zinc-500">Último snapshot</div>
+              <div className="mt-1 text-lg font-black">{qualifyingFrozenAt || liveMeta.updated || lastUpdated || "—"}</div>
+            </div>
+          </div>
+        </CardBox>
+
+        <div className="grid gap-5 md:grid-cols-4">
+          <StatBox title="Carros no quali" value={String(qualifyingSortedRows.length)} note={qualifyingFrozen ? "resultado congelado" : "espelhando live timing"} tone={qualifyingFrozen ? "green" : "amber"} />
+          <StatBox title="Pole provisória" value={qualifyingSortedRows[0]?.num || "—"} note={qualifyingSortedRows[0]?.team || "sem dados"} tone="red" />
+          <StatBox title="Melhor tempo" value={qualifyingSortedRows[0]?.time || "—"} note={qualifyingSortedRows[0]?.car || "—"} tone="blue" />
+          <StatBox title="Status" value={qualifyingFrozen ? "Congelado" : "Ao vivo"} note={qualifyingFrozen ? "não muda mais sozinho" : "aguardando fim do quali"} tone={qualifyingFrozen ? "green" : "amber"} />
+        </div>
+
+        <CardBox className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-sm">
+              <thead className="bg-zinc-950 text-left text-white">
+                <tr>
+                  <th className="px-3 py-3">Pos</th>
+                  <th className="px-3 py-3">Nº</th>
+                  <th className="px-3 py-3">Classe</th>
+                  <th className="px-3 py-3">Equipe</th>
+                  <th className="px-3 py-3">Carro</th>
+                  <th className="px-3 py-3">Tempo</th>
+                  <th className="px-3 py-3">Gap</th>
+                </tr>
+              </thead>
+              <tbody>
+                {qualifyingSortedRows.map((row, idx) => (
+                  <tr key={`${row.num}-${idx}`} className={`${idx === 0 ? "bg-amber-50" : idx % 2 ? "bg-white" : "bg-zinc-50"} border-b border-zinc-100`}>
+                    <td className="px-3 py-3 font-black">P{row.pos || idx + 1}</td>
+                    <td className="px-3 py-3 font-black text-red-700">{row.num}</td>
+                    <td className="px-3 py-3"><Badge tone={String(row.cls || "").includes("SP 9") || String(row.cls || "").includes("SP9") ? "red" : "gray"}>{row.cls || "—"}</Badge></td>
+                    <td className="px-3 py-3 font-bold">{row.team || "—"}</td>
+                    <td className="px-3 py-3 text-zinc-700">{row.car || "—"}</td>
+                    <td className="px-3 py-3 font-black">{row.time || "—"}</td>
+                    <td className="px-3 py-3 text-zinc-600">{idx === 0 ? "—" : gap(row.time, bestQualifyingTime)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardBox>
+      </section>
+    )}
 
     {active === "auto" && (
       <section className="space-y-5">
