@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound, ShieldCheck, LogOut, LockKeyhole } from "lucide-react";
+import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound, ShieldCheck, LogOut, LockKeyhole, X } from "lucide-react";
 
 const STORAGE_KEY = "nurburgring-2026-companion-v6-race-watch";
 const AUTH_TOKEN_KEY = "nurburgring-2026-companion-auth-token";
@@ -36,6 +36,19 @@ type RaceControlGroup = {
   tone: string;
   urgent: boolean;
   firstIndex: number;
+};
+type CarInfoRequest = { num?: string; team?: string; car?: string; cls?: string };
+type CarInfoDetails = {
+  num: string;
+  team: string;
+  car: string;
+  cls: string;
+  group: string;
+  why: string;
+  photo: string;
+  live?: QRow & { pos?: number };
+  raceGroup?: RaceControlGroup;
+  drivers: DriverCard[];
 };
 
 const q1Seed: QRow[] = [
@@ -2400,6 +2413,32 @@ function CardBox({ children, className = "" }: { children: React.ReactNode; clas
   return <div className={`rounded-2xl border border-zinc-200 bg-white shadow-sm ${className}`}>{children}</div>;
 }
 
+function normalizeCarNum(num?: string) {
+  const clean = String(num || "").trim();
+  if (!clean) return "";
+  return clean.startsWith("#") ? clean : `#${clean}`;
+}
+
+function openCarInfoPopup(request: CarInfoRequest) {
+  window.dispatchEvent(new CustomEvent<CarInfoRequest>("open-car-info", { detail: request }));
+}
+
+function CarInfoTrigger({ children, num, team, car, cls, className = "" }: { children: React.ReactNode; num?: string; team?: string; car?: string; cls?: string; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openCarInfoPopup({ num, team, car, cls });
+      }}
+      className={`text-left underline decoration-zinc-300 decoration-dotted underline-offset-4 transition hover:text-red-700 hover:decoration-red-400 focus:outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-red-600 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function RaceControlGroupCard({ group, dense = false }: { group: RaceControlGroup; dense?: boolean }) {
   const latest = group.latest;
 
@@ -2413,8 +2452,8 @@ function RaceControlGroupCard({ group, dense = false }: { group: RaceControlGrou
             <Badge tone="gray">{group.messages.length} msg</Badge>
             {group.live && <Badge tone="blue">P{group.live.pos || "—"}</Badge>}
           </div>
-          {group.car && <div className="mt-1 text-sm font-bold text-zinc-800">{group.car.team}</div>}
-          {group.car && <div className="text-xs text-zinc-600">{group.car.car} • {group.car.cls}</div>}
+          {group.car && <div className="mt-1 text-sm font-bold text-zinc-800"><CarInfoTrigger num={group.car.num} team={group.car.team} car={group.car.car} cls={group.car.cls}>{group.car.team}</CarInfoTrigger></div>}
+          {group.car && <div className="text-xs text-zinc-600"><CarInfoTrigger num={group.car.num} team={group.car.team} car={group.car.car} cls={group.car.cls}>{group.car.car} • {group.car.cls}</CarInfoTrigger></div>}
         </div>
         {latest.time && <div className="text-xs font-black text-zinc-500">{latest.time}</div>}
       </div>
@@ -2440,7 +2479,7 @@ function Input({ value, onChange, placeholder, className = "" }: { value: string
   return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-red-600 ${className}`} />;
 }
 
-function StatBox({ title, value, note, tone = "gray" }: { title: string; value: string; note?: string; tone?: string }) {
+function StatBox({ title, value, note, tone = "gray" }: { title: string; value: string; note?: React.ReactNode; tone?: string }) {
   const bg = tone === "red" ? "bg-red-50" : tone === "green" ? "bg-emerald-50" : tone === "amber" ? "bg-amber-50" : "bg-zinc-50";
   return <div className={`rounded-2xl ${bg} p-4`}><div className="text-xs font-black uppercase tracking-wider text-zinc-500">{title}</div><div className="mt-1 text-2xl font-black md:text-3xl">{value}</div>{note && <div className="mt-1 text-sm text-zinc-600">{note}</div>}</div>;
 }
@@ -2504,10 +2543,10 @@ function LiveTimingRow({ row, index, leaderTime, raceGroup, isFavorite }: { row:
         </div>
       </td>
       <td className="px-3 py-2">
-        <div className="font-bold">{row.team || "—"}</div>
+        <div className="font-bold"><CarInfoTrigger num={row.num} team={row.team} car={row.car} cls={row.cls}>{row.team || "—"}</CarInfoTrigger></div>
         {raceGroup && <button onClick={() => window.dispatchEvent(new CustomEvent("open-race-control"))} className="mt-1 text-xs font-black text-red-700 underline decoration-red-300 underline-offset-2">ver RC</button>}
       </td>
-      <td className="px-3 py-2 text-zinc-700">{row.car || "—"}</td>
+      <td className="px-3 py-2 text-zinc-700"><CarInfoTrigger num={row.num} team={row.team} car={row.car} cls={row.cls}>{row.car || "—"}</CarInfoTrigger></td>
       <td className="px-3 py-2"><Badge tone={classTone}>{row.cls || "—"}</Badge></td>
       <td className="px-3 py-2">
         <div className="font-black">{row.time || "—"}</div>
@@ -2533,10 +2572,10 @@ function LiveTimingRow({ row, index, leaderTime, raceGroup, isFavorite }: { row:
     </tr>
   );
 }
-function PhotoBox({ src, label }: { src: string; label: string }) {
+function PhotoBox({ src, label, className = "h-32 sm:h-40" }: { src: string; label: string; className?: string }) {
   const [failed, setFailed] = useState(false);
-  if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className="h-32 w-full rounded-2xl bg-zinc-50 object-contain p-2 sm:h-40" />;
-  return <div className="flex h-32 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400 sm:h-40"><div className="text-center"><ImageIcon className="mx-auto mb-1" size={26} /><div className="text-xs font-bold">Sem foto</div></div></div>;
+  if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className={`${className} w-full rounded-2xl bg-zinc-50 object-contain p-2`} />;
+  return <div className={`${className} flex w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400`}><div className="text-center"><ImageIcon className="mx-auto mb-1" size={26} /><div className="text-xs font-bold">Sem foto</div></div></div>;
 }
 
 function DriverAvatar({ driver }: { driver: DriverCard }) {
@@ -2546,6 +2585,101 @@ function DriverAvatar({ driver }: { driver: DriverCard }) {
   }
   const initials = driver.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
   return <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-sm font-black text-zinc-500 ring-1 ring-zinc-200"><UserRound size={18} className="mr-0.5" />{initials}</div>;
+}
+
+function CarInfoModal({ info, onClose, onOpenRaceControl, onOpenCars }: { info: CarInfoDetails; onClose: () => void; onOpenRaceControl: () => void; onOpenCars: () => void }) {
+  const latest = info.raceGroup?.latest;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end bg-zinc-950/65 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+      <div className="max-h-[92vh] w-full overflow-auto rounded-t-[2rem] bg-white shadow-2xl sm:mx-auto sm:max-w-4xl sm:rounded-[2rem]" onClick={(event) => event.stopPropagation()}>
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-100 bg-white/95 p-4 backdrop-blur sm:p-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-3xl font-black text-red-700">{info.num || "—"}</span>
+              <Badge tone={getLiveClassTone(info.cls)}>{info.cls || "classe"}</Badge>
+              <Badge tone="gray">{info.group || "grid"}</Badge>
+              {info.live && <Badge tone="green">P{info.live.pos || "—"}</Badge>}
+              {info.raceGroup && <Badge tone={info.raceGroup.tone}>RC</Badge>}
+            </div>
+            <h2 className="mt-1 truncate text-xl font-black sm:text-2xl">{info.team || "Equipe não identificada"}</h2>
+          </div>
+          <button onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700 hover:bg-zinc-950 hover:text-white" aria-label="Fechar detalhes do carro">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="grid gap-0 lg:grid-cols-[1fr_.95fr]">
+          <div className="bg-zinc-50 p-4 sm:p-5">
+            <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
+              <div className="bg-zinc-100 p-3">
+                <PhotoBox src={info.photo} label={`${info.num} ${info.car}`} className="h-56 sm:h-72" />
+              </div>
+              <div className="p-4">
+                <div className="text-xs font-black uppercase tracking-wider text-zinc-500">Carro</div>
+                <div className="mt-1 text-xl font-black">{info.car || "Modelo não informado"}</div>
+                <p className="mt-3 text-sm leading-6 text-zinc-700">{info.why || "Carro detectado no app para acompanhamento durante a prova."}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-zinc-50 p-4">
+                <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Live timing</div>
+                <div className="mt-1 text-lg font-black">{info.live ? `P${info.live.pos || "—"}` : "Sem dados"}</div>
+                <div className="mt-1 text-sm font-bold text-zinc-600">{info.live?.time || "sem tempo"}</div>
+              </div>
+              <div className="rounded-2xl bg-zinc-50 p-4">
+                <div className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Última volta</div>
+                <div className="mt-1 text-lg font-black">{info.live?.lastLap || "—"}</div>
+                <div className="mt-1 text-sm font-bold text-zinc-600">{info.live?.pitStops ? `${info.live.pitStops} pits` : info.cls || "classe"}</div>
+              </div>
+            </div>
+
+            {latest ? (
+              <button onClick={onOpenRaceControl} className={`w-full rounded-2xl border p-4 text-left ${getRaceCardClass(info.raceGroup?.tone || "gray")}`}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={info.raceGroup?.tone || "gray"}>{formatRaceMessageType(latest.type)}</Badge>
+                  {latest.time && <span className="text-xs font-black text-zinc-500">{latest.time}</span>}
+                </div>
+                <div className="mt-2 text-sm font-bold leading-5">{truncateText(latest.translatedMessage, 170)}</div>
+              </button>
+            ) : (
+              <div className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-950">Sem alerta de Race Control para este carro.</div>
+            )}
+
+            <div className="rounded-2xl border border-zinc-100 bg-white p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-lg font-black">Pilotos</h3>
+                <Badge tone={info.drivers.length ? "blue" : "gray"}>{info.drivers.length || 0}</Badge>
+              </div>
+              {info.drivers.length ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {info.drivers.slice(0, 4).map((driver) => (
+                    <div key={`${driver.name}-${driver.carNum}`} className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-3">
+                      <DriverAvatar driver={driver} />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-black">{driver.name}</div>
+                        <div className="text-xs font-bold text-zinc-500">{driver.nationality} • {driver.role}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-zinc-50 p-3 text-sm font-bold text-zinc-500">Pilotos ainda não cadastrados para este carro.</div>
+              )}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button onClick={onOpenCars} className="rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white hover:bg-red-800">Abrir em Carros</button>
+              <button onClick={onClose} className="rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-black text-white hover:bg-zinc-800">Fechar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function NurburgringCompanion() {
@@ -2594,6 +2728,7 @@ export default function NurburgringCompanion() {
   const [carGroupFilter, setCarGroupFilter] = useState("Todos");
   const [carsPage, setCarsPage] = useState(1);
   const [expandedCar, setExpandedCar] = useState<string | null>(null);
+  const [carInfoRequest, setCarInfoRequest] = useState<CarInfoRequest | null>(null);
   const carsPerPage = 6;
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState("Todos");
@@ -2758,6 +2893,15 @@ export default function NurburgringCompanion() {
     const openRaceControl = () => setActive("racecontrol");
     window.addEventListener("open-race-control", openRaceControl);
     return () => window.removeEventListener("open-race-control", openRaceControl);
+  }, []);
+
+  useEffect(() => {
+    const openCarInfo = (event: Event) => {
+      const detail = (event as CustomEvent<CarInfoRequest>).detail;
+      if (detail) setCarInfoRequest(detail);
+    };
+    window.addEventListener("open-car-info", openCarInfo);
+    return () => window.removeEventListener("open-car-info", openCarInfo);
   }, []);
 
   useEffect(() => {
@@ -3126,6 +3270,31 @@ export default function NurburgringCompanion() {
     });
     return map;
   }, []);
+  const selectedCarInfo = useMemo<CarInfoDetails | null>(() => {
+    if (!carInfoRequest) return null;
+    const requestedNum = normalizeCarNum(carInfoRequest.num);
+    const car =
+      (requestedNum && allCars.find((item) => item.num === requestedNum)) ||
+      allCars.find((item) => item.team === carInfoRequest.team && item.car === carInfoRequest.car);
+    const num = car?.num || requestedNum || "";
+    const live = (num && liveByNum[num]) || undefined;
+    const raceGroup = (num && raceGroupByNum[num]) || undefined;
+    const cls = car?.cls || live?.cls || carInfoRequest.cls || "";
+    const [group, why] = car ? [car.group, car.why] : classifyCar(num || "#", cls);
+
+    return {
+      num: num || carInfoRequest.num || "—",
+      team: car?.team || live?.team || carInfoRequest.team || "",
+      car: car?.car || live?.car || carInfoRequest.car || "",
+      cls,
+      group,
+      why,
+      photo: car?.photo || (num ? `https://www.24h-rennen.de/wp-content/uploads/teilnehmer_26h/small/${num.replace("#", "")}.jpg` : ""),
+      live,
+      raceGroup,
+      drivers: num ? driversByCarNum[num] || [] : []
+    };
+  }, [allCars, carInfoRequest, driversByCarNum, liveByNum, raceGroupByNum]);
   const driverTeamGroups = useMemo<DriverTeamGroup[]>(() => {
     return allCars.map((car) => ({ key: `${car.num}-${car.team}`, car, drivers: driversByCarNum[car.num] || [] }));
   }, [allCars, driversByCarNum]);
@@ -3536,7 +3705,7 @@ export default function NurburgringCompanion() {
               </div>
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <StatBox title="Vencedor provisório" value={finalWinner?.num || "—"} note={finalWinner ? `${finalWinner.team} · ${finalWinner.car}` : "sem dados finais"} tone="green" />
+              <StatBox title="Vencedor provisório" value={finalWinner?.num || "—"} note={finalWinner ? <CarInfoTrigger num={finalWinner.num} team={finalWinner.team} car={finalWinner.car} cls={finalWinner.cls}>{finalWinner.team} · {finalWinner.car}</CarInfoTrigger> : "sem dados finais"} tone="green" />
               <StatBox title="Carros no snapshot" value={String(finalResultRows.length)} note="último resultado salvo" tone="blue" />
               <StatBox title="Mensagens RC" value={String(raceMessages.length)} note="registradas no app" tone="amber" />
             </div>
@@ -3565,8 +3734,8 @@ export default function NurburgringCompanion() {
                     </div>
                     {live && <Badge tone="green">P{live.pos || "—"}</Badge>}
                   </div>
-                  <div className="mt-3 min-h-[42px] text-sm font-black leading-5">{c.team}</div>
-                  <div className="mt-1 truncate text-xs text-zinc-600">{c.car}</div>
+                  <div className="mt-3 min-h-[42px] text-sm font-black leading-5"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.team}</CarInfoTrigger></div>
+                  <div className="mt-1 truncate text-xs text-zinc-600"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.car}</CarInfoTrigger></div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {live?.time && <Badge tone="dark">{live.time}</Badge>}
                     {group && <Badge tone={group.tone}>RC</Badge>}
@@ -3597,8 +3766,8 @@ export default function NurburgringCompanion() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-2xl font-black text-red-700">{c.num}</div>
-                        <div className="mt-1 text-sm font-black leading-5">{c.team}</div>
-                        <div className="mt-1 text-xs text-zinc-600">{c.car}</div>
+                        <div className="mt-1 text-sm font-black leading-5"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.team}</CarInfoTrigger></div>
+                        <div className="mt-1 text-xs text-zinc-600"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.car}</CarInfoTrigger></div>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
                         <Badge tone="amber">Favorito</Badge>
@@ -3650,8 +3819,8 @@ export default function NurburgringCompanion() {
                           <div className="mt-1 flex flex-wrap gap-1"><Badge>{c.cls || "—"}</Badge><Badge tone="amber">favorito</Badge></div>
                         </td>
                         <td className="px-3 py-3">
-                          <div className="font-black">{c.team}</div>
-                          <div className="mt-1 text-xs text-zinc-600">{c.car}</div>
+                          <div className="font-black"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.team}</CarInfoTrigger></div>
+                          <div className="mt-1 text-xs text-zinc-600"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.car}</CarInfoTrigger></div>
                         </td>
                         <td className="px-3 py-3">
                           {live ? <div><Badge tone="green">P{live.pos || "—"}</Badge><div className="mt-1 font-black">{live.time || "sem tempo"}</div><div className="text-xs text-zinc-500">{live.lastLap ? `Última: ${live.lastLap}` : live.cls}</div></div> : <span className="font-bold text-zinc-500">Sem dados</span>}
@@ -3739,8 +3908,8 @@ export default function NurburgringCompanion() {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="font-black leading-5">{r.team || "—"}</div>
-                  <div className="mt-1 text-sm text-zinc-600">{r.car || "—"}</div>
+                  <div className="font-black leading-5"><CarInfoTrigger num={r.num} team={r.team} car={r.car} cls={r.cls}>{r.team || "—"}</CarInfoTrigger></div>
+                  <div className="mt-1 text-sm text-zinc-600"><CarInfoTrigger num={r.num} team={r.team} car={r.car} cls={r.cls}>{r.car || "—"}</CarInfoTrigger></div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                   <div className="rounded-2xl bg-white/70 p-3">
@@ -3775,7 +3944,7 @@ export default function NurburgringCompanion() {
           </div>
         </CardBox>
 
-        <CardBox className="p-5"><h2 className="text-2xl font-black">Líderes por classe</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{liveLeadersByClass.slice(0, 12).map(({ cls, row }) => <div key={cls} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-center justify-between"><Badge tone={getLiveClassTone(cls)}>{cls}</Badge><div className="font-black">P{row.pos || "—"}</div></div><div className="mt-2 text-lg font-black">{row.num}</div><div className="text-sm font-bold">{row.team}</div><div className="text-xs text-zinc-600">{row.car}</div><div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-sm font-black text-red-700">{row.time || "sem tempo"}</span>{favorites[row.num] && <Badge tone="amber">★</Badge>}{raceGroupByNum[row.num] && <Badge tone={raceGroupByNum[row.num].tone}>RC</Badge>}</div></div>)}</div></CardBox>
+        <CardBox className="p-5"><h2 className="text-2xl font-black">Líderes por classe</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{liveLeadersByClass.slice(0, 12).map(({ cls, row }) => <div key={cls} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-center justify-between"><Badge tone={getLiveClassTone(cls)}>{cls}</Badge><div className="font-black">P{row.pos || "—"}</div></div><div className="mt-2 text-lg font-black">{row.num}</div><div className="text-sm font-bold"><CarInfoTrigger num={row.num} team={row.team} car={row.car} cls={row.cls}>{row.team}</CarInfoTrigger></div><div className="text-xs text-zinc-600"><CarInfoTrigger num={row.num} team={row.team} car={row.car} cls={row.cls}>{row.car}</CarInfoTrigger></div><div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-sm font-black text-red-700">{row.time || "sem tempo"}</span>{favorites[row.num] && <Badge tone="amber">★</Badge>}{raceGroupByNum[row.num] && <Badge tone={raceGroupByNum[row.num].tone}>RC</Badge>}</div></div>)}</div></CardBox>
       </section>
     )}
 
@@ -3863,8 +4032,8 @@ export default function NurburgringCompanion() {
                         {msg.translatedMessage !== msg.message && <div className="text-xs font-semibold text-zinc-500">Original: {msg.message}</div>}
                         {car && (
                           <div className="rounded-2xl bg-white p-3 text-sm shadow-sm">
-                            <div className="font-black">{car.team}</div>
-                            <div className="text-zinc-600">{car.car} • {car.cls}</div>
+                            <div className="font-black"><CarInfoTrigger num={car.num} team={car.team} car={car.car} cls={car.cls}>{car.team}</CarInfoTrigger></div>
+                            <div className="text-zinc-600"><CarInfoTrigger num={car.num} team={car.team} car={car.car} cls={car.cls}>{car.car} • {car.cls}</CarInfoTrigger></div>
                           </div>
                         )}
                       </div>
@@ -3903,8 +4072,8 @@ export default function NurburgringCompanion() {
 
         <div className="grid gap-5 md:grid-cols-4">
           <StatBox title="Carros no quali" value={String(qualifyingSortedRows.length)} note={qualifyingFrozen ? "resultado congelado" : "espelhando live timing"} tone={qualifyingFrozen ? "green" : "amber"} />
-          <StatBox title="Pole provisória" value={qualifyingSortedRows[0]?.num || "—"} note={qualifyingSortedRows[0]?.team || "sem dados"} tone="red" />
-          <StatBox title="Melhor tempo" value={qualifyingSortedRows[0]?.time || "—"} note={qualifyingSortedRows[0]?.car || "—"} tone="blue" />
+          <StatBox title="Pole provisória" value={qualifyingSortedRows[0]?.num || "—"} note={qualifyingSortedRows[0] ? <CarInfoTrigger num={qualifyingSortedRows[0].num} team={qualifyingSortedRows[0].team} car={qualifyingSortedRows[0].car} cls={qualifyingSortedRows[0].cls}>{qualifyingSortedRows[0].team || "sem dados"}</CarInfoTrigger> : "sem dados"} tone="red" />
+          <StatBox title="Melhor tempo" value={qualifyingSortedRows[0]?.time || "—"} note={qualifyingSortedRows[0] ? <CarInfoTrigger num={qualifyingSortedRows[0].num} team={qualifyingSortedRows[0].team} car={qualifyingSortedRows[0].car} cls={qualifyingSortedRows[0].cls}>{qualifyingSortedRows[0].car || "—"}</CarInfoTrigger> : "—"} tone="blue" />
           <StatBox title="Status" value={qualifyingFrozen ? "Congelado" : "Ao vivo"} note={qualifyingFrozen ? "não muda mais sozinho" : "aguardando fim do quali"} tone={qualifyingFrozen ? "green" : "amber"} />
         </div>
 
@@ -3928,8 +4097,8 @@ export default function NurburgringCompanion() {
                     <td className="px-3 py-3 font-black">P{row.pos || idx + 1}</td>
                     <td className="px-3 py-3 font-black text-red-700">{row.num}</td>
                     <td className="px-3 py-3"><Badge tone={String(row.cls || "").includes("SP 9") || String(row.cls || "").includes("SP9") ? "red" : "gray"}>{row.cls || "—"}</Badge></td>
-                    <td className="px-3 py-3 font-bold">{row.team || "—"}</td>
-                    <td className="px-3 py-3 text-zinc-700">{row.car || "—"}</td>
+                    <td className="px-3 py-3 font-bold"><CarInfoTrigger num={row.num} team={row.team} car={row.car} cls={row.cls}>{row.team || "—"}</CarInfoTrigger></td>
+                    <td className="px-3 py-3 text-zinc-700"><CarInfoTrigger num={row.num} team={row.team} car={row.car} cls={row.cls}>{row.car || "—"}</CarInfoTrigger></td>
                     <td className="px-3 py-3 font-black">{row.time || "—"}</td>
                     <td className="px-3 py-3 text-zinc-600">{idx === 0 ? "—" : gap(row.time, bestQualifyingTime)}</td>
                   </tr>
@@ -4096,8 +4265,8 @@ export default function NurburgringCompanion() {
                 <div className="p-4"><div className="relative"><PhotoBox src={c.photo} label={c.num + " " + c.car} /><button onClick={() => toggleFavorite(c.num)} className={(favorites[c.num] ? "bg-amber-400 text-zinc-950" : "bg-white/90 text-zinc-500") + " absolute right-2 top-2 rounded-full p-2 shadow"} title="Favoritar"><Star size={18} fill={favorites[c.num] ? "currentColor" : "none"} /></button></div></div>
                 <div className="flex items-center justify-between border-y border-zinc-100 bg-zinc-50 p-4"><div className="text-3xl font-black">{c.num}</div><div className="flex flex-wrap justify-end gap-2"><Badge tone={c.group === "Favorito" ? "red" : c.group === "Surpresa" ? "amber" : c.group === "Personagem" ? "green" : "gray"}>{c.group}</Badge><Badge>{c.cls || "—"}</Badge>{group && <Badge tone={group.tone}>RC</Badge>}</div></div>
                 <div className="p-4">
-                  <div className="font-black">{c.team}</div>
-                  <div className="mt-1 text-sm text-zinc-600">{c.car}</div>
+                  <div className="font-black"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.team}</CarInfoTrigger></div>
+                  <div className="mt-1 text-sm text-zinc-600"><CarInfoTrigger num={c.num} team={c.team} car={c.car} cls={c.cls}>{c.car}</CarInfoTrigger></div>
                   <p className="mt-3 text-sm leading-6">{c.why}</p>
                   <div className={(live ? "bg-emerald-50 text-emerald-950" : "bg-zinc-50 text-zinc-500") + " mt-4 rounded-2xl p-3 text-sm"}><div className="text-[10px] font-black uppercase tracking-wider">Live timing</div>{live ? <div className="mt-1 flex flex-wrap items-center gap-2"><Badge tone="green">P{live.pos || "—"}</Badge><span className="font-black">{live.time || "sem tempo"}</span><span className="text-xs">{live.cls || c.cls}</span></div> : <div className="mt-1 font-bold">Sem dados nesta sessão</div>}</div>
                   {group && <div className={(group.tone === "red" ? "bg-red-50 text-red-950" : group.tone === "amber" ? "bg-amber-50 text-amber-950" : "bg-blue-50 text-blue-950") + " mt-3 rounded-2xl p-3 text-sm"}><div className="flex flex-wrap items-center gap-2"><Badge tone={group.tone}>{formatRaceMessageType(group.latest.type)}</Badge><span className="text-xs font-black">{group.messages.length} msg</span></div><div className="mt-2 font-bold leading-5">{truncateText(group.latest.translatedMessage, 150)}</div><button onClick={() => setActive("racecontrol")} className="mt-2 text-xs font-black text-red-700">Ver Race Control</button></div>}
@@ -4138,8 +4307,8 @@ export default function NurburgringCompanion() {
             const rc = raceGroupByNum[group.car.num];
             return <CardBox key={group.key} className="overflow-hidden">
               <div className="border-b border-zinc-100 bg-zinc-950 p-5 text-white">
-                <div className="flex items-start justify-between gap-3"><div><div className="text-2xl font-black">{group.car.num}</div><div className="mt-1 text-sm text-zinc-300">{group.car.team}</div></div><div className="flex flex-wrap justify-end gap-2"><Badge tone="red">{group.car.cls}</Badge>{live && <Badge tone="green">P{live.pos || "—"}</Badge>}{rc && <Badge tone={rc.tone}>RC</Badge>}</div></div>
-                <div className="mt-3 text-sm text-zinc-300">{group.car.car}</div>
+                <div className="flex items-start justify-between gap-3"><div><div className="text-2xl font-black">{group.car.num}</div><div className="mt-1 text-sm text-zinc-300"><CarInfoTrigger num={group.car.num} team={group.car.team} car={group.car.car} cls={group.car.cls} className="text-zinc-300 hover:text-white">{group.car.team}</CarInfoTrigger></div></div><div className="flex flex-wrap justify-end gap-2"><Badge tone="red">{group.car.cls}</Badge>{live && <Badge tone="green">P{live.pos || "—"}</Badge>}{rc && <Badge tone={rc.tone}>RC</Badge>}</div></div>
+                <div className="mt-3 text-sm text-zinc-300"><CarInfoTrigger num={group.car.num} team={group.car.team} car={group.car.car} cls={group.car.cls} className="text-zinc-300 hover:text-white">{group.car.car}</CarInfoTrigger></div>
               </div>
               <div className="space-y-3 p-5">
                 {group.drivers.length ? group.drivers.map((p) => <div key={`${p.name}-${p.carNum}`} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"><div className="flex items-start gap-3"><DriverAvatar driver={p} /><div className="min-w-0 flex-1"><div className="font-black">{p.name}</div><div className="mt-1 text-xs font-bold text-zinc-500">{p.nationality} • {p.role}</div><div className="mt-2"><Badge tone={p.won24h.toLowerCase().includes("já venceu") ? "green" : "gray"}>{p.won24h}</Badge></div></div></div><div className="mt-3 text-sm font-black text-red-700">Mini histórico</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.history}</p><div className="mt-3 text-sm font-black text-zinc-900">Por que acompanhar</div><p className="mt-1 text-sm leading-6 text-zinc-700">{p.watch}</p></div>) : <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-5 text-center"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-zinc-400"><UserRound size={26} /></div><div className="font-black">Pilotos ainda não cadastrados</div><p className="mt-2 text-sm leading-6 text-zinc-600">Este carro está na lista completa, mas ainda não tem pilotos com mini histórico no app. Quando tivermos os nomes, o card já está preparado.</p></div>}
@@ -4150,13 +4319,32 @@ export default function NurburgringCompanion() {
       </section>
     )}
 
-    {active === "checklist" && <CardBox className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Caça aos carros</h2><p className="mt-1 text-sm text-zinc-600">Quando marcar, o card fica verde de confirmado.</p></div><Badge tone="green">{checkedCount}/{allCars.length} vistos</Badge></div><div className="mt-5 grid gap-3 md:grid-cols-2">{allCars.map((car) => { const isChecked = !!checked[car.num]; return <label key={car.num} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition ${isChecked ? "border-emerald-500 bg-emerald-50 text-emerald-950" : "border-zinc-200 bg-white hover:bg-zinc-50"}`}><input type="checkbox" checked={isChecked} onChange={(e) => setCarChecked(car.num, e.target.checked)} className="h-5 w-5 accent-emerald-700" /><div className="flex-1"><div className="font-black">{car.num} — {car.car}</div><div className="text-sm opacity-75">{car.team}</div></div>{isChecked ? <Badge tone="green">Confirmado</Badge> : <Badge>Pendente</Badge>}</label>; })}</div></CardBox>}
+    {active === "checklist" && <CardBox className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Caça aos carros</h2><p className="mt-1 text-sm text-zinc-600">Quando marcar, o card fica verde de confirmado.</p></div><Badge tone="green">{checkedCount}/{allCars.length} vistos</Badge></div><div className="mt-5 grid gap-3 md:grid-cols-2">{allCars.map((car) => { const isChecked = !!checked[car.num]; return <label key={car.num} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition ${isChecked ? "border-emerald-500 bg-emerald-50 text-emerald-950" : "border-zinc-200 bg-white hover:bg-zinc-50"}`}><input type="checkbox" checked={isChecked} onChange={(e) => setCarChecked(car.num, e.target.checked)} className="h-5 w-5 accent-emerald-700" /><div className="flex-1"><div className="font-black">{car.num} — <CarInfoTrigger num={car.num} team={car.team} car={car.car} cls={car.cls}>{car.car}</CarInfoTrigger></div><div className="text-sm opacity-75"><CarInfoTrigger num={car.num} team={car.team} car={car.car} cls={car.cls}>{car.team}</CarInfoTrigger></div></div>{isChecked ? <Badge tone="green">Confirmado</Badge> : <Badge>Pendente</Badge>}</label>; })}</div></CardBox>}
 
     {active === "placar" && <CardBox className="p-5"><h2 className="text-2xl font-black">Placar por fases</h2><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[900px] border-separate border-spacing-y-2 text-sm"><thead><tr className="text-left text-xs uppercase text-zinc-500"><th>Fase</th><th>Líder geral</th><th>Surpresa</th><th>Observação</th></tr></thead><tbody>{phases.map((p, idx) => <tr key={p.phase} className="bg-white shadow-sm"><td className="rounded-l-2xl px-3 py-2 font-black">{p.phase}</td><td className="py-2"><Input value={p.leader} onChange={(v) => setPhases((rows) => rows.map((r, i) => i === idx ? { ...r, leader: v } : r))} /></td><td className="py-2"><Input value={p.surprise} onChange={(v) => setPhases((rows) => rows.map((r, i) => i === idx ? { ...r, surprise: v } : r))} /></td><td className="rounded-r-2xl py-2 pr-2"><Input value={p.note} onChange={(v) => setPhases((rows) => rows.map((r, i) => i === idx ? { ...r, note: v } : r))} /></td></tr>)}</tbody></table></div></CardBox>}
 
     {active === "timeline" && <CardBox className="p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Timeline da corrida</h2><p className="mt-1 text-sm text-zinc-600">Use para registrar chuva, pits, acidentes, Code 60, abandono e momentos legais.</p></div><Badge tone="red">{raceEvents.length} eventos</Badge></div><div className="grid gap-3 md:grid-cols-[1fr_1fr_160px_150px]"><Input value={eventTitle} onChange={setEventTitle} placeholder="Título do evento" /><Input value={eventNote} onChange={setEventNote} placeholder="Observação" /><select value={eventTag} onChange={(e) => setEventTag(e.target.value)} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold"><option>Observação</option><option>Incidente</option><option>Pit</option><option>Chuva</option><option>Code 60</option><option>Ultrapassagem</option><option>Abandono</option></select><button onClick={addRaceEvent} className="flex items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-black text-white"><Plus size={17} />Adicionar</button></div><div className="mt-5 space-y-3">{raceEvents.map((e) => <div key={e.id} className="grid gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-4 md:grid-cols-[100px_120px_1fr_40px]"><div className="font-black">{e.time}</div><div><Badge tone={e.tag === "Incidente" || e.tag === "Abandono" ? "red" : e.tag === "Chuva" || e.tag === "Code 60" ? "amber" : "gray"}>{e.tag}</Badge></div><div><div className="font-black">{e.title}</div>{e.note && <p className="mt-1 text-sm text-zinc-600">{e.note}</p>}</div><button onClick={() => setRaceEvents((old) => old.filter((x) => x.id !== e.id))} className="rounded-xl bg-white p-2 text-zinc-500 hover:text-red-700"><Trash2 size={17} /></button></div>)}</div></CardBox>}
 
     {active === "refs" && <CardBox className="p-5"><h2 className="text-2xl font-black">Referência de tempos</h2><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[800px] text-sm"><thead className="bg-zinc-900 text-left text-white"><tr><th className="p-3">Ano</th><th>Sessão</th><th>Mais rápido</th><th>Melhor tempo</th><th>P10</th><th>Janela</th><th>Nota</th></tr></thead><tbody>{references.map((r) => <tr key={r.year} className="border-b border-zinc-100"><td className="p-3 font-black">{r.year}</td><td>{r.session}</td><td>{r.p1}</td><td className="font-black text-red-700">{r.best}</td><td>{r.p10}</td><td>{r.window}</td><td>{r.note}</td></tr>)}</tbody></table></div></CardBox>}
+
+    {selectedCarInfo && (
+      <CarInfoModal
+        info={selectedCarInfo}
+        onClose={() => setCarInfoRequest(null)}
+        onOpenRaceControl={() => {
+          setActive("racecontrol");
+          setCarInfoRequest(null);
+        }}
+        onOpenCars={() => {
+          setActive("carros");
+          if (selectedCarInfo.num && selectedCarInfo.num !== "—") {
+            setCarSearch(selectedCarInfo.num);
+            setExpandedCar(selectedCarInfo.num);
+          }
+          setCarInfoRequest(null);
+        }}
+      />
+    )}
 
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200 bg-white/95 px-2 py-2 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
       <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
