@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, Image as ImageIcon, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound, ShieldCheck, LogOut, LockKeyhole, X } from "lucide-react";
+import { Trophy, Clock, Car, ListChecks, BarChart3, Flag, RotateCcw, Wifi, WifiOff, RefreshCcw, Timer, Search, ExternalLink, Star, AlertTriangle, Plus, Trash2, Activity, ChevronDown, ChevronUp, UserRound, ShieldCheck, LogOut, LockKeyhole, X } from "lucide-react";
 
 const STORAGE_KEY = "nurburgring-2026-companion-v6-race-watch";
 const AUTH_TOKEN_KEY = "nurburgring-2026-companion-auth-token";
@@ -2419,6 +2419,20 @@ function normalizeCarNum(num?: string) {
   return clean.startsWith("#") ? clean : `#${clean}`;
 }
 
+function getPhotoSources(src: string) {
+  const clean = String(src || "").trim();
+  const sources: string[] = [];
+  const add = (value: string) => {
+    if (value && !sources.includes(value)) sources.push(value);
+  };
+
+  add(clean);
+  if (clean.includes("/teilnehmer_26h/small/")) {
+    add(clean.replace("/teilnehmer_26h/small/", "/teilnehmer_26h/"));
+  }
+  return sources;
+}
+
 function openCarInfoPopup(request: CarInfoRequest) {
   window.dispatchEvent(new CustomEvent<CarInfoRequest>("open-car-info", { detail: request }));
 }
@@ -2573,9 +2587,27 @@ function LiveTimingRow({ row, index, leaderTime, raceGroup, isFavorite }: { row:
   );
 }
 function PhotoBox({ src, label, className = "h-32 sm:h-40" }: { src: string; label: string; className?: string }) {
-  const [failed, setFailed] = useState(false);
-  if (src && !failed) return <img src={src} alt={label} onError={() => setFailed(true)} className={`${className} w-full rounded-2xl bg-zinc-50 object-contain p-2`} />;
-  return <div className={`${className} flex w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-zinc-400`}><div className="text-center"><ImageIcon className="mx-auto mb-1" size={26} /><div className="text-xs font-bold">Sem foto</div></div></div>;
+  const sources = useMemo(() => getPhotoSources(src), [src]);
+  const sourceKey = sources.join("|");
+  const [sourceIndex, setSourceIndex] = useState(0);
+  useEffect(() => setSourceIndex(0), [sourceKey]);
+  const currentSrc = sources[sourceIndex] || "";
+
+  if (currentSrc) {
+    return <img src={currentSrc} alt={label} onError={() => setSourceIndex((index) => index + 1)} className={`${className} w-full rounded-2xl bg-zinc-50 object-contain p-2`} />;
+  }
+
+  return (
+    <div className={`${className} flex w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-zinc-500`}>
+      <div className="text-center">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-red-700 shadow-sm">
+          <Car size={28} />
+        </div>
+        <div className="text-sm font-black text-zinc-700">{label || "Carro"}</div>
+        <div className="mt-1 text-xs font-bold text-zinc-400">foto indisponível</div>
+      </div>
+    </div>
+  );
 }
 
 function DriverAvatar({ driver }: { driver: DriverCard }) {
